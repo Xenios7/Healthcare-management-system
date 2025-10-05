@@ -1,0 +1,144 @@
+#API
+# Build artifacts
+bin/
+obj/
+out/
+Debug/
+Release/
+*.exe
+*.dll
+*.pdb
+*.cache
+*.log
+*.user
+
+# EF Core build artifacts (but keep migrations)
+Migrations/obj/
+
+# User-specific files / IDEs
+.vs/
+.vscode/
+.idea/
+*.suo
+*.userosscache
+*.userprefs
+*.rsuser
+*.sw?
+*.iml
+
+# Rider / ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Test Results
+TestResults/
+*.coverage
+*.coveragexml
+
+# NuGet packages
+*.nupkg
+
+# Publish output
+publish/
+app.publish/
+*.pubxml
+*.publishproj
+
+# Logs
+*.log
+logs/
+LogFiles/
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.orig
+*.rej
+*.pid
+*.pid.lock
+
+# Environment / secrets
+.env
+.env.*
+appsettings.Development.json
+appsettings.Local.json
+appsettings.*.local.json
+appsettings.secrets.json
+**/secrets.json
+**/.secretstore/
+
+# Docker local volume data (raw database)
+pgdata/
+postgres-data/
+docker-compose.override.yml
+
+# Database dumps
+# Keep versioned .sql dump files only
+*.backup
+*.dump
+# Keep only the versioned SQL export
+!database/*.sql
+
+# Generated static front-end files (if any)
+ClientApp/build/
+ClientApp/node_modules/
+ClientApp/.env
+
+# Misc
+*.old
+*.temp
+*.sublime-workspace
+*.sublime-project
+
+
+#UI
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
