@@ -1,0 +1,116 @@
+
+
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+*.log
+
+# Build directories
+dist/
+build/
+out/
+.eslintcache
+
+# Metro / React Native cache
+.expo/
+.expo-shared/
+.expo-dev/
+.expo-packager-cache/
+.expo/packager-info.json
+.expo/settings.json
+.expo/manifest.json
+.expo/metro-cache/
+.expo/web-cache/
+.expo/packager-info.json
+.expo/packager-info.json.lock
+.metro-cache/
+.expo-cache/
+.expo3/
+.expo-settings/
+.expo-shared/
+.expo/
+.packager-info.json
+
+# React Native generated files
+ios/Pods/
+ios/build/
+ios/DerivedData/
+android/.gradle/
+android/build/
+android/app/build/
+android/.cxx/
+android/local.properties
+android/captures/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.iml
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+
+# Jest / coverage
+coverage/
+*.lcov
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Yarn / npm cache
+.yarn/*
+!.yarn/releases
+!.yarn/plugins
+!.yarn/sdks
+!.yarn/versions
+.yarn/cache
+.pnp.*
+.pnp.js
+
+# CocoaPods (if you ever use bare workflow)
+ios/Pods/
+vendor/bundle/
+*.xcworkspace
+Podfile.lock
+
+# Android / Gradle
+.gradle/
+local.properties
+*.keystore
+key.properties
+
+# Misc
+*.orig
+*.rej
+*.seed
+*.pid
+*.pid.lock
+
+# Expo Web build
+web-build/
+web-dist/
