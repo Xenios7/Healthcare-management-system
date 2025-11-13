@@ -54,7 +54,7 @@ export default function Login() {
       setLoading(true);
 
       //  REMINDER : otan to API mas tha ine etimo tha kanoume allagi to URL
-      const response = await fetch('http://YOUR_API_URL/api/auth/login', {
+      const response = await fetch('http://localhost:5164/api/Auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
