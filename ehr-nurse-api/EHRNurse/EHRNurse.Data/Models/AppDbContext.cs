@@ -452,6 +452,15 @@ public partial class AppDbContext : DbContext
         }
     }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            // Fallback only; normally Program.cs provides the connection.
+            optionsBuilder.UseNpgsql(
+                "Host=localhost;Port=5433;Database=ehrnurse_local;Username=postgres;Password=postgres");
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
