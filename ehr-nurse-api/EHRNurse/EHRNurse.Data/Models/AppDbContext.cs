@@ -445,22 +445,24 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<WeightDatum> WeightData { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder){
-        // #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        if(!optionsBuilder.IsConfigured){
-            optionsBuilder.UseNpgsql("Server=5.75.181.25;Port=30722;Database=ehr;User Id=ehr-user;Password=_Pz&AbdBK6>,5$uX");
-        }
-    }
+    // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    // {
+    //     // #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+    //     if (!optionsBuilder.IsConfigured)
+    //     {
+    //         optionsBuilder.UseNpgsql("Server=5.75.181.25;Port=30722;Database=ehr;User Id=ehr-user;Password=_Pz&AbdBK6>,5$uX");
+    //     }
+    // }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-            // Fallback only; normally Program.cs provides the connection.
-            optionsBuilder.UseNpgsql(
-                "Host=localhost;Port=5433;Database=ehrnurse_local;Username=postgres;Password=postgres");
-        }
-    }
+    // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    // {
+    //     if (!optionsBuilder.IsConfigured)
+    //     {
+    //         // Fallback only; normally Program.cs provides the connection.
+    //         optionsBuilder.UseNpgsql(
+    //             "Host=localhost;Port=5432;Database=ehrnurse_local;Username=postgres;Password=postgres");
+    //     }
+    // }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
