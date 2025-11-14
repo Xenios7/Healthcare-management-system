@@ -4,7 +4,7 @@
     "slug": "ehr-nurse-ui",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/alasia_logo.png",
     "scheme": "ehrnurseui",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -39,6 +39,7 @@
           }
         }
       ],
+      "expo-secure-store"
       "expo-web-browser"
     ],
     "experiments": {

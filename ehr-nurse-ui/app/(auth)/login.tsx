@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,9 @@ import { g } from '../../styles/global';
 import { theme } from '../../styles/theme';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getToken } from '../utils/authStorage';
+import { biometricPrompt } from '../utils/biometricAuth';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // add your own IP-address
 const API_BASE_URL =
@@ -50,6 +53,16 @@ export default function Login() {
       useNativeDriver: true,
     }).start();
   };
+
+  useEffect(() => {
+    (async () => {
+      const storedToken = await getToken();
+      if (storedToken) {
+        const result = await biometricPrompt();
+        if (result.success) router.replace('/(tabs)');
+      }
+    })();
+  }, []);
 
   const onLogin = async () => {
     if (!email || !password) {
@@ -151,48 +164,111 @@ export default function Login() {
             </Pressable>
           </View>
 
-         <View style={{ width: '70%', alignItems: 'center' }}>
-  <Pressable
-    onPress={onLogin}
-    disabled={loading}
-    onHoverIn={handleHoverIn}
-    onHoverOut={handleHoverOut}
-    onPressIn={handleHoverIn}
-    onPressOut={handleHoverOut}
-    style={{ width: '100%' }}
-  >
-    <Animated.View
-      style={[
-        styles.loginButton,
-        {
-          transform: [{ scale: scaleAnim }],
-          backgroundColor: hovered
-            ? theme.colors.primaryDark
-            : theme.colors.primary,
-          shadowOpacity: hovered ? 0.4 : 0.2,
-          elevation: hovered ? 6 : 3,
-          width: '100%', 
-        },
-      ]}
-    >
-      {loading ? (
-        <ActivityIndicator color="#fff" />
-      ) : (
-        <Text style={styles.loginButtonText}>Login</Text>
-      )}
-    </Animated.View>
-  </Pressable>
-</View>
+          <View style={{ width: '70%', alignItems: 'center' }}>
+            <Pressable
+              onPress={onLogin}
+              disabled={loading}
+              onHoverIn={handleHoverIn}
+              onHoverOut={handleHoverOut}
+              onPressIn={handleHoverIn}
+              onPressOut={handleHoverOut}
+              style={{ width: '100%' }}
+            >
+              <Animated.View
+                style={[
+                  styles.loginButton,
+                  {
+                    transform: [{ scale: scaleAnim }],
+                    backgroundColor: hovered
+                      ? theme.colors.primaryDark
+                      : theme.colors.primary,
+                    shadowOpacity: hovered ? 0.4 : 0.2,
+                    elevation: hovered ? 6 : 3,
+                    width: '100%',
+                  },
+                ]}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.loginButtonText}>Login</Text>
+                )}
+              </Animated.View>
+            </Pressable>
+          </View>
 
 
           {/* Forgot Password */}
           <Pressable style={styles.forgotPasswordButton} onPress={onForgot}>
             <Text style={styles.forgotPasswordText}>
-              I forgot my password 
+              I forgot my password
             </Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
+
+      {/* <View style={styles.fingerprintContainer}>
+        <Pressable
+          onPress={async () => {
+
+            const result = await biometricPrompt();
+
+            if (result.success) {
+              const storedToken = await getToken();
+              if (storedToken) router.replace('/(tabs)');
+              else Alert.alert('No saved session', 'Please log in first.');
+            } else if (result.error) {
+              Alert.alert('Biometric Error', result.error);
+            }
+          }}
+          style={({ pressed }) => [
+            styles.fingerprintButton,
+            { opacity: pressed ? 0.8 : 1 },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="fingerprint"
+            size={64}
+            color={theme.colors.primaryDark}
+          />
+        </Pressable>
+        <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
+      </View> */}
+
+      <Pressable
+        onPress={async () => {
+          const result = await biometricPrompt();
+
+          if (result.success) {
+            const storedToken = await getToken();
+            if (storedToken) {
+              router.replace('/');
+            } else {
+              Alert.alert('No saved session', 'Please log in first with your credentials.');
+            }
+          } else {
+            if (result.error === 'user_cancel' || result.error === 'system_cancel') {
+              // user canceled
+              console.log('User canceled biometric login. Showing password form.');
+            } else {
+              Alert.alert('Biometric Error', result.error || 'Authentication failed.');
+            }
+          }
+        }}
+        style={({ pressed }) => [
+          styles.fingerprintButton,
+          { opacity: pressed ? 0.8 : 1 },
+        ]}
+      >
+        <MaterialCommunityIcons
+          name="fingerprint"
+          size={64}
+          color={theme.colors.primaryDark}
+        />
+      </Pressable>
+      <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
+
+
     </SafeAreaView>
   );
 }
@@ -265,5 +341,24 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: theme.colors.primary,
     marginLeft: 5,
+  },
+  fingerprintContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: theme.spacing.xl,
+  },
+  fingerprintButton: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#f6f7f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadow.card,
+  },
+  fingerprintLabel: {
+    marginTop: theme.spacing.sm,
+    color: theme.colors.mutedText,
+    fontSize: theme.font.sm,
   },
 });
