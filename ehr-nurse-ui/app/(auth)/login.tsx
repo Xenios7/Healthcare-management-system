@@ -26,7 +26,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 const API_BASE_URL =
   Platform.select({
     web: 'http://localhost:5164',
-    default:  'http://10.82.37.134:5164'
+    default:  'http://10.120.71.57:5164'
   });
 
 export default function Login() {
