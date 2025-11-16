@@ -1,6 +1,5 @@
 using EHRNurse.Api.Dto;
 using EHRNurse.Api.Interfaces;
-using EHRNurse.Data;
 using EHRNurse.Data.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,13 +47,18 @@ namespace EHRNurse.Api.Services
         {
             if (long.TryParse(barcode.Replace(PatientPrefix, ""), out var patientId))
                 return await _context.Patients.FirstOrDefaultAsync(p => p.Id == patientId);
+
             return null;
         }
 
-        private async Task<Medication?> GetMedicationFromBarcodeAsync(string barcode)
+        private async Task<MedicationDatum?> GetMedicationFromBarcodeAsync(string barcode)
         {
-            if (long.TryParse(barcode.Replace(MedicationPrefix, ""), out var medicationId))
-                return await _context.Medications.FirstOrDefaultAsync(m => m.Id == medicationId);
+            if (int.TryParse(barcode.Replace(MedicationPrefix, ""), out var medicationId))
+            {
+                return await _context.MedicationData
+                    .FirstOrDefaultAsync(m => m.Id == medicationId);
+            }
+
             return null;
         }
     }

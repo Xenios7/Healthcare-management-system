@@ -24,6 +24,9 @@ var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+builder.Services.AddScoped<IBarcodeService, BarcodeService>();
+
+
 // AuthN
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
