@@ -28,7 +28,7 @@ import {saveToken } from '../utils/authStorage';
 const API_BASE_URL =
   Platform.select({
     web: 'http://localhost:5164',
-    default:  'http://10.120.71.57:5164'
+    default:  'http://172.20.10.2:5164'
   });
 
 export default function Login() {
@@ -61,7 +61,7 @@ export default function Login() {
       const storedToken = await getToken();
       if (storedToken) {
         const result = await biometricPrompt();
-        if (result.success) router.replace('/(tabs)');
+        if (result.success) router.replace('/home');
       }
     })();
   }, []);

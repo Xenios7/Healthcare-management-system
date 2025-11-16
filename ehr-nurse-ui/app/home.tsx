@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { theme } from "../styles/theme";
+import { Link } from "expo-router";
 
 export default function HomeScreen() {
   return (
@@ -30,13 +31,17 @@ export default function HomeScreen() {
           <Text style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}>
             Quick Actions
           </Text>
+
           <View style={styles.quickActionsRow}>
-            <Pressable style={styles.quickActionCard}>
-              <View style={styles.quickIconWrapper}>
-                <Ionicons name="qr-code-outline" size={32} color={theme.colors.primaryDark} />
-              </View>
-              <Text style={styles.quickActionText}>Scan patient</Text>
-            </Pressable>
+            <Link href="/qrcode" asChild> 
+              <Pressable style={styles.quickActionCard}>
+                <View style={styles.quickIconWrapper}>
+                  <Ionicons name="qr-code-outline" size={32} color={theme.colors.primaryDark} />
+                </View>
+                <Text style={styles.quickActionText}>Scan patient</Text>
+              </Pressable>
+            </Link>
+
             <View style={{ flex: 1 }} />
           </View>
 
@@ -97,7 +102,6 @@ function overviewItem(
 ) {
   return (
     <View style={styles.overviewCard}>
-      {/* Left block */}
       <View style={styles.overviewLeft}>
         <View style={styles.overviewIconCircle}>
           <MaterialCommunityIcons name={icon} size={20} color="#ffffff" />
@@ -108,14 +112,13 @@ function overviewItem(
             <Text style={[styles.overviewCountMain, { color: highlightColor }]}>{current}</Text>
             <Text style={styles.overviewCountSlash}>/{total}</Text>
           </View>
-          {/* Allow wrapping so whole word shows */}
+
           <Text style={styles.overviewLabel} numberOfLines={2}>
             {label}
           </Text>
         </View>
       </View>
 
-      {/* Right fixed-width status slot */}
       <View style={styles.overviewRight}>
         {status === "warning" && (
           <Ionicons name="warning" size={18} color="#fbbf24" />
@@ -171,8 +174,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     color: "rgba(15, 23, 42, 0.85)",
   },
-
-  /* Overview: 2 per row, no clipping, fixed right slot */
   overviewRow: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -183,7 +184,6 @@ const styles = StyleSheet.create({
   overviewCard: {
     width: "48%",
     marginBottom: theme.spacing.sm,
-
     flexDirection: "row",
     alignItems: "center",
     borderRadius: theme.radii.md,
@@ -196,11 +196,11 @@ const styles = StyleSheet.create({
   overviewLeft: {
     flexDirection: "row",
     alignItems: "center",
-    flex: 1, // take all available width except the right slot
+    flex: 1,
     paddingLeft: theme.spacing.sm,
   },
   overviewRight: {
-    width: 28,          
+    width: 28,
     alignItems: "center",
     justifyContent: "center",
     marginRight: theme.spacing.sm,
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.sm,
   },
   overviewTextBlock: {
-    flex: 1,                
+    flex: 1,
     flexShrink: 1,
   },
   overviewCountRow: {
@@ -237,8 +237,6 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     color: theme.colors.mutedText,
   },
-
-  /* Quick actions */
   quickActionsRow: {
     flexDirection: "row",
     marginTop: theme.spacing.xs,
@@ -270,8 +268,6 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: theme.colors.text,
   },
-
-  /* Alerts */
   alertsContainer: {
     marginTop: theme.spacing.sm,
   },
@@ -285,8 +281,6 @@ const styles = StyleSheet.create({
     fontSize: theme.font.sm,
     color: theme.colors.text,
   },
-
-  /* Bottom nav */
   bottomNav: {
     flexDirection: "row",
     alignItems: "center",

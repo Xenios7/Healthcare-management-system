@@ -1,4 +1,3 @@
-// app/(tabs)/_layout.tsx
 import { Tabs } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../../styles/theme';
@@ -13,6 +12,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: theme.colors.mutedText,
       }}
     >
+      {/* Home Screen */}
       <Tabs.Screen
         name="index"
         options={{
@@ -22,6 +22,8 @@ export default function TabsLayout() {
           ),
         }}
       />
+
+      {/* Profile Screen */}
       <Tabs.Screen
         name="profile"
         options={{
@@ -29,6 +31,15 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="person" color={color} size={size} />
           ),
+        }}
+      />
+
+      {/* QR Code Scanner Screen  */}
+      <Tabs.Screen
+        name="qrcode"
+        options={{
+          href: null,                     
+          tabBarStyle: { display: "none" },  
         }}
       />
     </Tabs>
