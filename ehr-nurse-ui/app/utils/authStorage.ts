@@ -29,3 +29,11 @@ export async function deleteToken() {
     console.error('Error deleting token:', error);
   }
 }
+
+export async function clearToken() {
+  try {
+    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  } catch (e) {
+    console.error('Error clearing token', e);
+  }
+}

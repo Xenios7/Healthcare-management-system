@@ -21,6 +21,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from '../utils/authStorage';
 import { biometricPrompt } from '../utils/biometricAuth';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {saveToken } from '../utils/authStorage';
+
 
 // add your own IP-address
 const API_BASE_URL =
@@ -87,8 +89,12 @@ export default function Login() {
       const data = await response.json();
       if (!data.token) throw new Error('Login failed: no token received.');
 
-      await AsyncStorage.setItem('auth_token', data.token);
-      router.replace('/home');
+// Save securely for biometric login
+await saveToken(data.token);
+
+await AsyncStorage.setItem('auth_token', data.token);
+
+router.replace('/home');
     } catch (error: any) {
       Alert.alert('Login failed', error.message || 'An error occurred.');
       console.error('Login error:', error);
