@@ -14,7 +14,7 @@ public partial class AppDbContext : DbContext
         : base(options)
     {
     }
-
+    
     public virtual DbSet<AccommodationBed> AccommodationBeds { get; set; }
 
     public virtual DbSet<AccommodationBuilding> AccommodationBuildings { get; set; }
