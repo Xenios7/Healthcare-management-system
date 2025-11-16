@@ -1,13 +1,13 @@
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
 import { View, Text, StyleSheet, Alert, Pressable } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function QRCodeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-
-  
+  const insets = useSafeAreaInsets();
   const hasHandledScan = useRef(false);
 
   if (!permission) return <View />;
@@ -24,11 +24,9 @@ export default function QRCodeScreen() {
   }
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
-    
     if (hasHandledScan.current) return;
     hasHandledScan.current = true;
 
-    
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     Alert.alert("Scanned!", data, [
@@ -36,46 +34,52 @@ export default function QRCodeScreen() {
         text: "OK",
         onPress: () => {
           router.replace("/home");
-          
         },
       },
     ]);
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Exit button -> Home */}
+    <SafeAreaView style={{ flex: 1 }}>
       <Pressable
-        style={styles.exitButton}
+        style={[
+          styles.exitButton,
+          {
+            top: insets.top + 12,
+            right: 16,
+          },
+        ]}
         onPress={() => router.replace("/home")}
       >
-        <Text style={styles.exitText}>✕</Text>
+        <Text style={styles.exitText}>×</Text>
       </Pressable>
 
-      {/* Scanner */}
       <CameraView
         style={{ flex: 1 }}
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
         onBarcodeScanned={handleBarCodeScanned}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   exitButton: {
     position: "absolute",
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    padding: 10,
-    borderRadius: 20,
+    zIndex: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   exitText: {
     color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 26,
+    lineHeight: 28, // ΤΕΛΕΙΑ ΚΕΝΤΡΑΡΙΣΜΕΝΟ ΣΕ ΟΛΕΣ ΤΙΣ ΣΥΣΚΕΥΕΣ
+    fontWeight: "600",
+    textAlign: "center",
   },
   center: {
     flex: 1,
@@ -90,6 +94,5 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "white",
-    fontSize: 14,
   },
 });
