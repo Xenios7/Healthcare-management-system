@@ -14,20 +14,21 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { g } from '../../styles/global';
 import { theme } from '../../styles/theme';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getToken } from '../utils/authStorage';
-import { biometricPrompt } from '../utils/biometricAuth';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { getToken, saveToken } from '../utils/authStorage';
+import { biometricPrompt, canUseFingerprint } from '../utils/biometricAuth';
 
-// add your own IP-address
-const API_BASE_URL =
-  Platform.select({
-    web: 'http://localhost:5164',
-    default:  'http://172.20.10.2:5164'
-  });
+
+const API_BASE_URL = Platform.select({
+  web: 'http://localhost:5164',
+  default: 'http://172.20.10.2:5164',
+});
+
+const PASSWORD_LOGIN_FLAG_KEY = 'has_completed_password_login';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -35,6 +36,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [hovered, setHovered] = useState(false);
+
+  const [canUseBiometrics, setCanUseBiometrics] = useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -56,10 +59,20 @@ export default function Login() {
 
   useEffect(() => {
     (async () => {
-      const storedToken = await getToken();
-      if (storedToken) {
-        const result = await biometricPrompt();
-        if (result.success) router.replace('/home');
+
+      const [storedToken, fingerprintAvailable, passwordFlag] =
+        await Promise.all([
+          getToken(),
+          canUseFingerprint(),
+          AsyncStorage.getItem(PASSWORD_LOGIN_FLAG_KEY),
+        ]);
+
+      const hasCompletedPasswordLogin = passwordFlag === 'true';
+
+      if (storedToken && fingerprintAvailable && hasCompletedPasswordLogin) {
+        setCanUseBiometrics(true);
+      } else {
+        setCanUseBiometrics(false);
       }
     })();
   }, []);
@@ -73,7 +86,6 @@ export default function Login() {
     try {
       setLoading(true);
 
-      //  REMINDER : otan to API mas tha ine etimo tha kanoume allagi to URL
       const response = await fetch(`${API_BASE_URL}/api/Auth/login`, {
         method: 'POST',
         headers: {
@@ -87,7 +99,16 @@ export default function Login() {
       const data = await response.json();
       if (!data.token) throw new Error('Login failed: no token received.');
 
+      await saveToken(data.token);
       await AsyncStorage.setItem('auth_token', data.token);
+
+      await AsyncStorage.setItem(PASSWORD_LOGIN_FLAG_KEY, 'true');
+
+      const fingerprintAvailable = await canUseFingerprint();
+      if (fingerprintAvailable) {
+        setCanUseBiometrics(true);
+      }
+
       router.replace('/home');
     } catch (error: any) {
       Alert.alert('Login failed', error.message || 'An error occurred.');
@@ -119,7 +140,6 @@ export default function Login() {
             <Text style={styles.titleGreen}>GO</Text>
           </Text>
 
-          {/* Email */}
           <View style={[styles.inputBox]}>
             <MaterialIcons
               name="email"
@@ -138,7 +158,6 @@ export default function Login() {
             />
           </View>
 
-          {/* Password */}
           <View style={[styles.inputBox]}>
             <MaterialIcons
               name="lock"
@@ -198,7 +217,6 @@ export default function Login() {
           </View>
 
 
-          {/* Forgot Password */}
           <Pressable style={styles.forgotPasswordButton} onPress={onForgot}>
             <Text style={styles.forgotPasswordText}>
               I forgot my password
@@ -207,18 +225,49 @@ export default function Login() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* <View style={styles.fingerprintContainer}>
+
+      <>
         <Pressable
           onPress={async () => {
+            const passwordFlag = await AsyncStorage.getItem(
+              PASSWORD_LOGIN_FLAG_KEY
+            );
+            const hasCompletedPasswordLogin = passwordFlag === 'true';
+
+            if (!hasCompletedPasswordLogin) {
+              Alert.alert(
+                'Fingerprint disabled',
+                'Please log in with your email and password first.'
+              );
+              return;
+            }
 
             const result = await biometricPrompt();
 
             if (result.success) {
               const storedToken = await getToken();
-              if (storedToken) router.replace('/(tabs)');
-              else Alert.alert('No saved session', 'Please log in first.');
-            } else if (result.error) {
-              Alert.alert('Biometric Error', result.error);
+              if (storedToken) {
+                router.replace('/');
+              } else {
+                Alert.alert(
+                  'No saved session',
+                  'Please log in first with your credentials.'
+                );
+              }
+            } else {
+              if (
+                result.error === 'user_cancel' ||
+                result.error === 'system_cancel'
+              ) {
+                console.log(
+                  'User canceled biometric login. Showing password form.'
+                );
+              } else {
+                Alert.alert(
+                  'Biometric Error',
+                  result.error || 'Authentication failed.'
+                );
+              }
             }
           }}
           style={({ pressed }) => [
@@ -233,42 +282,8 @@ export default function Login() {
           />
         </Pressable>
         <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
-      </View> */}
-
-      <Pressable
-        onPress={async () => {
-          const result = await biometricPrompt();
-
-          if (result.success) {
-            const storedToken = await getToken();
-            if (storedToken) {
-              router.replace('/');
-            } else {
-              Alert.alert('No saved session', 'Please log in first with your credentials.');
-            }
-          } else {
-            if (result.error === 'user_cancel' || result.error === 'system_cancel') {
-              // user canceled
-              console.log('User canceled biometric login. Showing password form.');
-            } else {
-              Alert.alert('Biometric Error', result.error || 'Authentication failed.');
-            }
-          }
-        }}
-        style={({ pressed }) => [
-          styles.fingerprintButton,
-          { opacity: pressed ? 0.8 : 1 },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name="fingerprint"
-          size={64}
-          color={theme.colors.primaryDark}
-        />
-      </Pressable>
-      <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
-
-
+      </>
+      
     </SafeAreaView>
   );
 }

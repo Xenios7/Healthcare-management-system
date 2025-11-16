@@ -1,44 +1,55 @@
 // app/index.tsx
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { theme } from '../../styles/theme';
+import { ActivityIndicator, View, StyleSheet, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
+import { theme } from '../../styles/theme';
+
+import { getToken, clearToken } from '../utils/authStorage';
+import { biometricPrompt } from '../utils/biometricAuth';
 
 export default function Index() {
-  const [isReady, setIsReady] = useState(false);
-  const [isAuthed, setIsAuthed] = useState(false);
+  const [checking, setChecking] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    
-    const checkAuth = async () => {
-      await AsyncStorage.removeItem('auth_token');
+    const run = async () => {
       try {
-        const token = await AsyncStorage.getItem('auth_token');
-        setIsAuthed(!!token);
+        
+        const token = await getToken();
+
+        if (!token) {
+          // No session at all → go to normal login
+          router.replace('/login');
+          return;
+        }
+
+       
+        const result = await biometricPrompt();
+
+        if (result.success) {
+          
+          router.replace('/home');
+        } else {
+          
+          await clearToken();
+          Alert.alert(
+            'Authentication required',
+            'Please login with your email and password.',
+          );
+          router.replace('/login');
+        }
       } catch (err) {
-        console.warn('Error reading auth token', err);
+        console.warn('Auth / biometric check failed', err);
+        router.replace('/login');
       } finally {
-        setIsReady(true);
+        setChecking(false);
       }
     };
 
-    checkAuth();
-  }, []);
+    run();
+  }, [router]);
 
-  useEffect(() => {
-    if (!isReady) return;
-
-    
-    if (isAuthed) {
-      router.replace('/home');
-    } else {
-      router.replace('/login');
-    }
-  }, [isReady, isAuthed, router]);
-
-  if (!isReady) {
+  if (checking) {
     return (
       <View style={styles.loaderContainer}>
         <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -46,7 +57,6 @@ export default function Index() {
     );
   }
 
-  // We already navigated away from this screen
   return null;
 }
 
