@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using EHRNurse.Data;
 using EHRNurse.Data.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,7 +15,6 @@ namespace EHRNurse.Api.Controllers
             _db = db;
         }
 
-
         [HttpGet("schedule")]
         public async Task<ActionResult<IEnumerable<MedicationListItemDto>>> GetMedicationSchedule(
             [FromQuery] DateOnly date,
@@ -29,7 +23,11 @@ namespace EHRNurse.Api.Controllers
         {
 
 
-            var targetDate = date.ToDateTime(TimeOnly.MinValue);
+            var start = DateTime.SpecifyKind(
+                date.ToDateTime(TimeOnly.MinValue),
+                DateTimeKind.Utc
+            );
+            var end = start.AddDays(1);
             var statusLower = (status ?? "all").Trim().ToLowerInvariant();
 
             // Base query: medications that are at least somewhat relevant
@@ -42,12 +40,18 @@ namespace EHRNurse.Api.Controllers
                 .Include(m => m.FrequencyOfIntakeUnit)
                 .Include(m => m.DurationOfTreatmentUnit)
                 .Include(m => m.RouteOfAdministration)
-                .Include(m => m.Visit);
+                .Include(m => m.Visit)
+                .Include(m => m.EpisodeCare)
+                    .ThenInclude(e => e.AccommodationData)
+                        .ThenInclude(a => a.Bed)
+                            .ThenInclude(b => b.Room)
+                                .ThenInclude(r => r.Ward);
 
 
             query = query.Where(m =>
-                m.OnSetDateTime.Date <= targetDate.Date &&
-                (m.EndDateTime == null || m.EndDateTime.Value.Date >= targetDate.Date));
+                m.OnSetDateTime < end &&
+                (m.EndDateTime == null || m.EndDateTime >= start)
+            );
 
             // Text search on patient + product
             if (!string.IsNullOrWhiteSpace(search))
@@ -61,16 +65,15 @@ namespace EHRNurse.Api.Controllers
 
             var meds = await query.ToListAsync();
 
-
             var dtoQuery = meds.Select(m =>
             {
-                var derivedStatus = GetDemoStatus(m, targetDate);
+                var derivedStatus = GetDemoStatus(m, start);
 
                 int? age = CalculateAge(m.Patient.DateOfBirth, date);
 
                 // 1) current accommodation (patient’s stay)
                 var currentAccommodation = m.EpisodeCare.AccommodationData
-                    .Where(a => a.IsActive && (a.DischargeDate == null || a.DischargeDate > targetDate))
+                    .Where(a => a.IsActive && (a.DischargeDate == null || a.DischargeDate > start))
                     .OrderByDescending(a => a.RegistrationDate)  // latest stay wins
                     .FirstOrDefault();
 
@@ -92,10 +95,9 @@ namespace EHRNurse.Api.Controllers
                 if (admissionDate.HasValue)
                 {
                     var adm = admissionDate.Value.ToDateTime(TimeOnly.MinValue);
-                    daysInWard = (targetDate.Date - adm.Date).Days;
+                    daysInWard = (start.Date - adm.Date).Days;
                     if (daysInWard < 0) daysInWard = 0;
                 }
-
 
                 return new MedicationListItemDto
                 {
@@ -126,12 +128,11 @@ namespace EHRNurse.Api.Controllers
                 };
             });
 
-
             dtoQuery = statusLower switch
             {
                 "given" => dtoQuery.Where(x => x.Status == "given"),
                 "not_given" => dtoQuery.Where(x => x.Status == "not_given"),
-                _ => dtoQuery // "all"
+                _ => dtoQuery
             };
 
             // Simple pagination
@@ -141,28 +142,21 @@ namespace EHRNurse.Api.Controllers
 
             return Ok(result);
         }
-
-        /// <summary>
-        /// Demo status derivation WITHOUT changing the DB:
-        /// - "given"     = order is not active anymore (ended or deactivated before that date)
-        /// - "not_given" = order is active on that date
-        /// This is NOT per-dose real administration, just good enough for the project.
-        /// </summary>
         private static string GetDemoStatus(MedicationDatum m, DateTime targetDate)
         {
-            // Ended / deactivated before that date → consider as "given"
+
             if (!m.IsActive)
                 return "given";
 
             if (m.EndDateTime.HasValue && m.EndDateTime.Value.Date < targetDate.Date)
                 return "given";
 
-            // Active around that date → "not_given"
+
             if (m.OnSetDateTime.Date <= targetDate.Date &&
                 (!m.EndDateTime.HasValue || m.EndDateTime.Value.Date >= targetDate.Date))
                 return "not_given";
 
-            // Outside the range (future / irrelevant)
+
             return "not_relevant";
         }
 
