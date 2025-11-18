@@ -22,7 +22,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, saveToken } from '../utils/authStorage';
 import { biometricPrompt, canUseFingerprint } from '../utils/biometricAuth';
 
-
 const API_BASE_URL = Platform.select({
   web: 'http://localhost:5164',
   default: 'http://172.20.10.2:5164',
@@ -37,7 +36,10 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  const [canUseBiometrics, setCanUseBiometrics] = useState(false);
+  // 🔹 ΝΕΑ state για fingerprint λογική
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [hasCompletedPasswordLogin, setHasCompletedPasswordLogin] =
+    useState(false);
 
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
@@ -59,21 +61,16 @@ export default function Login() {
 
   useEffect(() => {
     (async () => {
+      // ❗ Αν δεν είναι ANDROID, δεν ασχολούμαστε καν με fingerprint
+      if (Platform.OS !== 'android') return;
 
-      const [storedToken, fingerprintAvailable, passwordFlag] =
-        await Promise.all([
-          getToken(),
-          canUseFingerprint(),
-          AsyncStorage.getItem(PASSWORD_LOGIN_FLAG_KEY),
-        ]);
+      // Έλεγχος αν υπάρχει fingerprint hardware / permissions
+      const fingerprintAvailable = await canUseFingerprint();
+      setBiometricAvailable(fingerprintAvailable);
 
-      const hasCompletedPasswordLogin = passwordFlag === 'true';
-
-      if (storedToken && fingerprintAvailable && hasCompletedPasswordLogin) {
-        setCanUseBiometrics(true);
-      } else {
-        setCanUseBiometrics(false);
-      }
+      // Έλεγχος αν έχει ξανακάνει login με password
+      const passwordFlag = await AsyncStorage.getItem(PASSWORD_LOGIN_FLAG_KEY);
+      setHasCompletedPasswordLogin(passwordFlag === 'true');
     })();
   }, []);
 
@@ -99,14 +96,28 @@ export default function Login() {
       const data = await response.json();
       if (!data.token) throw new Error('Login failed: no token received.');
 
+      // 🔹 Αποθήκευση first name (όπως πριν)
+      const firstNameFromApi =
+        data.user?.firstName ||
+        data.firstName ||
+        data.name ||
+        '';
+
+      if (firstNameFromApi) {
+        await AsyncStorage.setItem('user_first_name', firstNameFromApi);
+      }
+
       await saveToken(data.token);
       await AsyncStorage.setItem('auth_token', data.token);
 
+      // 🔐 ΕΔΩ ΣΗΜΕΙΩΝΟΥΜΕ ΟΤΙ ΕΚΑΝΕ LOGIN ΜΕ ΚΩΔΙΚΟ
       await AsyncStorage.setItem(PASSWORD_LOGIN_FLAG_KEY, 'true');
+      setHasCompletedPasswordLogin(true); // ενημερώνουμε και το state αμέσως
 
-      const fingerprintAvailable = await canUseFingerprint();
-      if (fingerprintAvailable) {
-        setCanUseBiometrics(true);
+      // Αν είμαστε σε Android, ενημερώνουμε αν υπάρχει fingerprint
+      if (Platform.OS === 'android') {
+        const fingerprintAvailable = await canUseFingerprint();
+        setBiometricAvailable(fingerprintAvailable);
       }
 
       router.replace('/home');
@@ -121,6 +132,13 @@ export default function Login() {
   const onForgot = () => {
     Alert.alert('Forgot Password', 'This feature is not yet implemented.');
   };
+
+  // ✅ ΤΟ ΚΛΕΙΔΙ: Fingerprint φαίνεται ΜΟΝΟ αν:
+  // - είναι Android
+  // - υπάρχει hardware fingerprint
+  // - έχει γίνει πρώτα login με password
+  const showFingerprint =
+    Platform.OS === 'android' && biometricAvailable && hasCompletedPasswordLogin;
 
   return (
     <SafeAreaView style={g.screen}>
@@ -216,7 +234,6 @@ export default function Login() {
             </Pressable>
           </View>
 
-
           <Pressable style={styles.forgotPasswordButton} onPress={onForgot}>
             <Text style={styles.forgotPasswordText}>
               I forgot my password
@@ -225,65 +242,67 @@ export default function Login() {
         </View>
       </KeyboardAvoidingView>
 
-
-      <>
-        <Pressable
-          onPress={async () => {
-            const passwordFlag = await AsyncStorage.getItem(
-              PASSWORD_LOGIN_FLAG_KEY
-            );
-            const hasCompletedPasswordLogin = passwordFlag === 'true';
-
-            if (!hasCompletedPasswordLogin) {
-              Alert.alert(
-                'Fingerprint disabled',
-                'Please log in with your email and password first.'
+      {/* 🔐 Fingerprint: ΜΟΝΟ Android + ΜΟΝΟ μετά από login με κωδικό */}
+      {showFingerprint && (
+        <>
+          <Pressable
+            onPress={async () => {
+              // Extra safety: ξανατσεκάρουμε το flag
+              const passwordFlag = await AsyncStorage.getItem(
+                PASSWORD_LOGIN_FLAG_KEY
               );
-              return;
-            }
+              const hasCompleted = passwordFlag === 'true';
 
-            const result = await biometricPrompt();
+              if (!hasCompleted) {
+                Alert.alert(
+                  'Fingerprint disabled',
+                  'Please log in with your email and password first.'
+                );
+                return;
+              }
 
-            if (result.success) {
-              const storedToken = await getToken();
-              if (storedToken) {
-                router.replace('/');
+              const result = await biometricPrompt();
+
+              if (result.success) {
+                const storedToken = await getToken();
+                if (storedToken) {
+                  router.replace('/home');
+                } else {
+                  Alert.alert(
+                    'No saved session',
+                    'Please log in first with your credentials.'
+                  );
+                }
               } else {
-                Alert.alert(
-                  'No saved session',
-                  'Please log in first with your credentials.'
-                );
+                if (
+                  result.error === 'user_cancel' ||
+                  result.error === 'system_cancel'
+                ) {
+                  console.log(
+                    'User canceled biometric login. Showing password form.'
+                  );
+                } else {
+                  Alert.alert(
+                    'Biometric Error',
+                    result.error || 'Authentication failed.'
+                  );
+                }
               }
-            } else {
-              if (
-                result.error === 'user_cancel' ||
-                result.error === 'system_cancel'
-              ) {
-                console.log(
-                  'User canceled biometric login. Showing password form.'
-                );
-              } else {
-                Alert.alert(
-                  'Biometric Error',
-                  result.error || 'Authentication failed.'
-                );
-              }
-            }
-          }}
-          style={({ pressed }) => [
-            styles.fingerprintButton,
-            { opacity: pressed ? 0.8 : 1 },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="fingerprint"
-            size={64}
-            color={theme.colors.primaryDark}
-          />
-        </Pressable>
-        <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
-      </>
-      
+            }}
+            style={({ pressed }) => [
+              styles.fingerprintButton,
+              { opacity: pressed ? 0.8 : 1 },
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="fingerprint"
+              size={64}
+              color={theme.colors.primaryDark}
+            />
+          </Pressable>
+          <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
+        </>
+      )}
     </SafeAreaView>
   );
 }
