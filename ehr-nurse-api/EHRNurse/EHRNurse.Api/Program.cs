@@ -29,6 +29,9 @@ Console.WriteLine($"Using connection: {new Npgsql.NpgsqlConnectionStringBuilder(
 
 
 
+builder.Services.AddScoped<IBarcodeService, BarcodeService>();
+
+
 // AuthN
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

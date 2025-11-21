@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 import { Tabs } from "expo-router";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import { theme } from "../../styles/theme";
 import React from "react";
+=======
+import { Tabs } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
+import { theme } from '../../styles/theme';
+import React from 'react';
+>>>>>>> origin/main
 
 export default function TabsLayout() {
   return (
@@ -21,6 +28,7 @@ export default function TabsLayout() {
         },
       }}
     >
+      {/* Home Screen */}
       <Tabs.Screen
         name="index"
         options={{
@@ -30,6 +38,10 @@ export default function TabsLayout() {
         }}
       />
 
+<<<<<<< HEAD
+=======
+      {/* Profile Screen */}
+>>>>>>> origin/main
       <Tabs.Screen
         name="patients"
         options={{
@@ -71,6 +83,15 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => (
             <Ionicons name="calendar-outline" size={26} color={color} />
           ),
+        }}
+      />
+
+      {/* QR Code Scanner Screen  */}
+      <Tabs.Screen
+        name="qrcode"
+        options={{
+          href: null,                     
+          tabBarStyle: { display: "none" },  
         }}
       />
     </Tabs>
