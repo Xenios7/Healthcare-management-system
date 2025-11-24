@@ -23,5 +23,14 @@ namespace EHRNurse.Api.Controllers
             var patients = await _inpatientService.GetAllInpatientsAsync();
             return Ok(patients);
         }
+
+        [HttpGet("{id}/medication")]
+        public async Task<ActionResult<IEnumerable<MedicationListItemDto>>> GetPatientMedications(int id)
+        {
+            var meds = await _inpatientService.GetMedicationsForPatientAsync(id);
+            
+            // If no meds found, we can still return an empty list
+            return Ok(meds);
+        }
     }
 }
