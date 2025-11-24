@@ -64,6 +64,79 @@ function isSameDay(a: Date, b: Date) {
   );
 }
 
+function getFilterLabel(f: AppointmentFilter) {
+  if (f === 'all') return 'All';
+  if (f === 'upcoming') return 'Upcoming';
+  if (f === 'completed') return 'Completed';
+  return f;
+}
+
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function isSameOrAfterToday(date: Date) {
+  const today = startOfDay(new Date());
+  const d = startOfDay(date);
+  return d.getTime() >= today.getTime();
+}
+
+function isUpcomingLike(a: AppointmentPatientDto) {
+  const s = (a.statusDisplay || '').toLowerCase();
+
+  if (s.includes('completed')) return false;
+  if (s.includes('did not attend') || s.includes('did not') || s.includes('dna'))
+    return false;
+
+  if (!isSameOrAfterToday(new Date(a.startDate))) return false;
+
+  return true;
+}
+
+type DayItemAnimatedProps = {
+  date: Date;
+  isActive: boolean;
+  onSelect: () => void;
+  selectedScale: SharedValue<number>;
+};
+
+const DayItemAnimated: React.FC<DayItemAnimatedProps> = ({
+  date,
+  isActive,
+  onSelect,
+  selectedScale,
+}) => {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: isActive ? selectedScale.value : 1 }],
+    opacity: isActive ? selectedScale.value : 0.85,
+  }));
+
+  const monthStr = date.toLocaleDateString(undefined, { month: 'short' });
+
+  return (
+    <Animated.View style={animatedStyle}>
+      <TouchableOpacity
+        style={[styles.dayItem, isActive && styles.dayItemActive]}
+        onPress={onSelect}
+      >
+        <Text style={[styles.dayName, isActive && styles.dayNameActive]}>
+          {date.toLocaleDateString(undefined, { weekday: 'short' })}
+        </Text>
+
+        <Text style={[styles.dayNumber, isActive && styles.dayNumberActive]}>
+          {date.getDate()}
+        </Text>
+
+        <Text style={[styles.monthName, isActive && styles.monthNameActive]}>
+          {monthStr}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
 export default function AppointmentsScreen() {
   const [filter, setFilter] = useState<AppointmentFilter>('upcoming');
   const [appointments, setAppointments] = useState<AppointmentPatientDto[]>([]);
