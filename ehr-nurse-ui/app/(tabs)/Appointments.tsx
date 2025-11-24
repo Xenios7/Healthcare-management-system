@@ -7,7 +7,20 @@ import {
   ActivityIndicator,
   RefreshControl,
   StyleSheet,
+  TextInput,
 } from 'react-native';
+
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  SharedValue,
+} from 'react-native-reanimated';
+
+import Icon from 'react-native-vector-icons/Feather';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Link } from 'expo-router';
+
 import {
   getAppointments,
   markCompleted,
@@ -16,8 +29,40 @@ import {
   AppointmentPatientDto,
   AppointmentFilter,
 } from '../utils/appointmentsApi';
+import { theme } from '../../styles/theme';
 
-const FILTERS: AppointmentFilter[] = ['upcoming', 'completed', 'all'];
+const FILTERS: AppointmentFilter[] = ['upcoming', 'completed', 'completed'];
+
+const PAST_DAYS = 30;
+const FUTURE_DAYS = 120;
+const DAY_ITEM_WIDTH = 78;
+
+function buildCalendarDays(): Date[] {
+  const today = new Date();
+  const days: Date[] = [];
+
+  for (let i = PAST_DAYS; i > 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    days.push(d);
+  }
+
+  for (let i = 0; i < FUTURE_DAYS; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    days.push(d);
+  }
+
+  return days;
+}
+
+function isSameDay(a: Date, b: Date) {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
 
 export default function AppointmentsScreen() {
   const [filter, setFilter] = useState<AppointmentFilter>('upcoming');
