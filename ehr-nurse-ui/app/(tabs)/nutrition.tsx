@@ -69,6 +69,7 @@ export default function NutritionScreen() {
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [localChecks, setLocalChecks] = useState<Record<number, boolean>>({});
 
   const loadMeals = async () => {
     try {
@@ -79,7 +80,7 @@ export default function NutritionScreen() {
           : selectedFilter === "Given"
           ? "given"
           : "not_given";
-      const url = `${API_BASE_URL}/api/nutrition/schedule?date=${selectedDayKey}&status=${status}&search=${search}`;
+      const url = `${API_BASE_URL}/api/Nutrition/schedule?status=${status}&search=${search}`;
       const response = await fetch(url);
       const data = await response.json();
       setMeals(data);
@@ -99,7 +100,7 @@ export default function NutritionScreen() {
       <View style={styles.panel}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerRow}>
-            <Pressable onPress={() => router.push("/home")}>
+            <Pressable onPress={() => router.push("/(tabs)")}>
               <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
             </Pressable>
 
@@ -117,14 +118,6 @@ export default function NutritionScreen() {
               <View style={styles.headerRight}>
                 <Pressable onPress={() => setSearchOpen(true)}>
                   <Ionicons name="search-outline" size={24} color={theme.colors.text} />
-                </Pressable>
-
-                <Pressable style={{ marginLeft: 12 }}>
-                  <MaterialCommunityIcons
-                    name="qrcode-scan"
-                    size={26}
-                    color={theme.colors.text}
-                  />
                 </Pressable>
               </View>
             )}
@@ -310,12 +303,18 @@ export default function NutritionScreen() {
                     </Pressable>
 
                     <Pressable
+                      onPress={() =>
+                        setLocalChecks((prev) => ({
+                          ...prev,
+                          [meal.FoodId]: !prev[meal.FoodId],
+                        }))
+                      }
                       style={[
                         styles.checkButton,
-                        meal.Status === "given" && styles.checkButtonActive,
+                        localChecks[meal.FoodId] && styles.checkButtonActive,
                       ]}
                     >
-                      {meal.Status === "given" && (
+                      {localChecks[meal.FoodId] && (
                         <Ionicons
                           name="checkmark"
                           size={18}
@@ -336,16 +335,12 @@ export default function NutritionScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.inputBg,
+    backgroundColor: theme.colors.card,
   },
   panel: {
     flex: 1,
-    marginHorizontal: theme.spacing.lg,
-    marginVertical: theme.spacing.lg,
-    borderRadius: theme.radii.lg,
     backgroundColor: theme.colors.card,
-    padding: theme.spacing.lg,
-    ...theme.shadow.card,
+    paddingHorizontal: theme.spacing.lg,
   },
   scrollContent: {
     paddingBottom: theme.spacing.lg,

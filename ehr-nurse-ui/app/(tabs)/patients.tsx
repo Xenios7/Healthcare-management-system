@@ -38,7 +38,7 @@ export default function PatientsScreen() {
     <SafeAreaView style={styles.screen}>
       <View style={styles.panel}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.push("/home")}>
+          <Pressable onPress={() => router.push("/(tabs)")}>
             <Ionicons name="chevron-back" size={26} color={theme.colors.text} />
           </Pressable>
 
@@ -50,10 +50,6 @@ export default function PatientsScreen() {
             <View style={styles.headerIcons}>
               <Pressable onPress={() => setSearchOpen(true)}>
                 <Ionicons name="search" size={22} color={theme.colors.text} />
-              </Pressable>
-
-              <Pressable style={{ marginLeft: theme.spacing.md }}>
-                <Ionicons name="qr-code-outline" size={24} color={theme.colors.text} />
               </Pressable>
             </View>
           )}
@@ -141,19 +137,13 @@ export default function PatientsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: theme.colors.inputBg,
+    backgroundColor: theme.colors.card,
   },
-
   panel: {
     flex: 1,
-    marginHorizontal: theme.spacing.lg,
-    marginVertical: theme.spacing.lg,
     backgroundColor: theme.colors.card,
-    borderRadius: theme.radii.lg,
-    padding: theme.spacing.lg,
-    ...theme.shadow.card,
+    paddingHorizontal: theme.spacing.lg,
   },
-
   headerRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -77,6 +77,7 @@ export default function MedicationScreen() {
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [localChecks, setLocalChecks] = useState<Record<number, boolean>>({});
 
   const loadMeds = async () => {
     try {
@@ -87,7 +88,7 @@ export default function MedicationScreen() {
           : selectedFilter === "Given"
           ? "given"
           : "not_given";
-      const url = `${API_BASE_URL}/api/medications/schedule?date=${selectedDayKey}&status=${status}&search=${search}`;
+      const url = `${API_BASE_URL}/api/Medications/schedule?status=${status}&search=${search}`;
       const response = await fetch(url);
       const data = await response.json();
       setMeds(data);
@@ -107,7 +108,7 @@ export default function MedicationScreen() {
       <View style={styles.panel}>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
           <View style={styles.headerRow}>
-            <Pressable onPress={() => router.replace("/home")}>
+            <Pressable onPress={() => router.replace("/(tabs)")}>
               <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
             </Pressable>
 
@@ -125,10 +126,6 @@ export default function MedicationScreen() {
               <View style={styles.headerRight}>
                 <Pressable onPress={() => setSearchOpen(true)}>
                   <Ionicons name="search-outline" size={24} color={theme.colors.text} />
-                </Pressable>
-
-                <Pressable style={{ marginLeft: 12 }}>
-                  <MaterialCommunityIcons name="qrcode-scan" size={26} color={theme.colors.text} />
                 </Pressable>
               </View>
             )}
@@ -318,22 +315,27 @@ export default function MedicationScreen() {
                       >
                         {med.HasReminder ? "Remove reminder" : "Add reminder"}
                       </Text>
-                    </Pressable>
-
-                    <Pressable
+                      </Pressable>
+                      <Pressable
+                        onPress={() =>
+                        setLocalChecks((prev) => ({
+                          ...prev,
+                          [med.MedicationId]: !prev[med.MedicationId],
+                        }))
+                        }
                       style={[
                         styles.checkButton,
-                        med.Status === "given" && styles.checkButtonActive,
+                        localChecks[med.MedicationId] && styles.checkButtonActive,
                       ]}
-                    >
-                      {med.Status === "given" && (
-                        <Ionicons
-                          name="checkmark"
-                          size={18}
-                          color={theme.colors.primaryDark}
-                        />
-                      )}
-                    </Pressable>
+                      >
+                    {localChecks[med.MedicationId] && (
+                    <Ionicons
+                      name="checkmark"
+                      size={18}
+                      color={theme.colors.primaryDark}
+                    />
+                    )}
+                  </Pressable>
                   </View>
                 </View>
               ))}
@@ -345,19 +347,16 @@ export default function MedicationScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.inputBg,
-  },
-  panel: {
-    flex: 1,
-    marginHorizontal: theme.spacing.lg,
-    marginVertical: theme.spacing.lg,
-    borderRadius: theme.radii.lg,
-    backgroundColor: theme.colors.card,
-    padding: theme.spacing.lg,
-    ...theme.shadow.card,
-  },
+ screen: {
+  flex: 1,
+  backgroundColor: theme.colors.card,
+},
+panel: {
+  flex: 1,
+  backgroundColor: theme.colors.card,
+  paddingHorizontal: theme.spacing.lg,
+},
+
   scrollContent: {
     paddingBottom: theme.spacing.lg,
   },
