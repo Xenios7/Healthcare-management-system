@@ -62,6 +62,7 @@ builder.Services.AddCors(policy =>
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddScoped<IInpatientService, InpatientService>();
 
 var app = builder.Build();
 

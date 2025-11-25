@@ -5,18 +5,16 @@ using EHRNurse.Api.Interfaces;
 namespace EHRNurse.Api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")] // Maps to: /api/inpatients
+    [Route("api/[controller]")]
     public class InpatientsController : ControllerBase
     {
         private readonly IInpatientService _inpatientService;
 
-        // Constructor Injection: We inject the service here
         public InpatientsController(IInpatientService inpatientService)
         {
             _inpatientService = inpatientService;
         }
 
-        // GET: api/inpatients
         [HttpGet]
         public async Task<ActionResult<IEnumerable<InpatientListItemDto>>> GetInpatients()
         {
@@ -24,12 +22,16 @@ namespace EHRNurse.Api.Controllers
             return Ok(patients);
         }
 
+        // UPDATED: Added [FromQuery] to read the date from the URL
         [HttpGet("{id}/medication")]
-        public async Task<ActionResult<IEnumerable<MedicationListItemDto>>> GetPatientMedications(int id)
+        public async Task<ActionResult<IEnumerable<MedicationListItemDto>>> GetPatientMedications(
+            int id, 
+            [FromQuery] DateOnly? date) // Nullable allows it to work even if frontend forgets the date
         {
-            var meds = await _inpatientService.GetMedicationsForPatientAsync(id);
-            
-            // If no meds found, we can still return an empty list
+            // If date is missing, default to Today
+            var queryDate = date ?? DateOnly.FromDateTime(DateTime.Now);
+
+            var meds = await _inpatientService.GetMedicationsForPatientAsync(id, queryDate);
             return Ok(meds);
         }
     }

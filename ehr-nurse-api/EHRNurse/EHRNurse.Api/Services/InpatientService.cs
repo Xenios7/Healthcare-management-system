@@ -6,14 +6,8 @@ namespace EHRNurse.Api.Services
 {
     public class InpatientService : IInpatientService
     {
-        // Constructor: Later you will inject your DB Context here
-        // private readonly EhrNurseContext _context;
-        // public InpatientService(EhrNurseContext context) => _context = context;
-
-        // PHASE 1: Main Inpatient List (For Christos - Deadline Monday)
         public async Task<IEnumerable<InpatientListItemDto>> GetAllInpatientsAsync()
         {
-            // 1. SIMULATE DATABASE FETCH
             var patientsFromDb = new List<Patient>
             {
                 new Patient
@@ -54,7 +48,7 @@ namespace EHRNurse.Api.Services
                 PatientId = p.Id,
                 FirstName = p.FirstName,
                 LastName = p.LastName,
-                Age = CalculateAge(p.DateOfBirth), // This calls the method at the bottom
+                Age = CalculateAge(p.DateOfBirth),
                 
                 // MAPPING LOGIC FOR WARD (Mocked for now)
                 WardId = p.Id == 101 ? "JWARD1101" : (p.Id == 102 ? "MWARD-2210" : "TWARD-1"),
@@ -70,36 +64,75 @@ namespace EHRNurse.Api.Services
             return await Task.FromResult(dtoList);
         }
 
-        // PHASE 2: Medication Per Patient (For Rafalia - Deadline Thursday)
-        public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId)
+        // =========================================================
+        // PHASE 2: Medication Per Patient (For Rafalia - Thursday)
+        // UPDATED: Now accepts 'DateOnly date' for the UI Filter
+        // =========================================================
+        public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId, DateOnly date)
         {
             var mockMeds = new List<MedicationListItemDto>();
+            var today = DateOnly.FromDateTime(DateTime.Now);
 
-            // Mock Data Logic
+            // --- Context for Mock Data (Extracted from GetAllInpatientsAsync) ---
+            string patientName = patientId == 101 ? "John Smith" : (patientId == 102 ? "Maria Georgiou" : "Test Patient2");
+            int patientAge = patientId == 101 ? 66 : 74;
+            string patientWard = patientId == 101 ? "JWARD1101" : "MWARD-2210";
+            // -------------------------------------------------------------------
+
             if (patientId == 101) // John Smith
             {
-                mockMeds.Add(new MedicationListItemDto
+                if (date == today) 
                 {
-                    MedicationId = 501,
-                    PatientId = 101,
-                    ProductName = "Paracetamol",
-                    Quantity = 500, // Fixed: Double
-                    QuantityUnit = "mg",
-                    InstructionPatient = "Take after meals",
-                    Status = "Given", 
-                    HasReminder = false
-                });
-                mockMeds.Add(new MedicationListItemDto
+                    mockMeds.Add(new MedicationListItemDto
+                    {
+                        MedicationId = 501,
+                        PatientId = 101,
+                        
+                        // --- NULL FIXES START ---
+                        PatientName = patientName,
+                        PatientAge = patientAge,
+                        Ward = patientWard,
+                        Bed = "BED-A",
+                        DaysInWard = 15,
+                        Form = "Tablet",
+                        FrequencyAmount = 1.0,
+                        FrequencyUnit = "DAY",
+                        // --- NULL FIXES END ---
+                        
+                        ProductName = "Paracetamol",
+                        Quantity = 500,
+                        QuantityUnit = "mg",
+                        InstructionPatient = "Take after meals",
+                        Status = "Given",
+                        HasReminder = false
+                    });
+                }
+                if (date == today)
                 {
-                    MedicationId = 502,
-                    PatientId = 101,
-                    ProductName = "Ibuprofen",
-                    Quantity = 200, // Fixed: Double
-                    QuantityUnit = "mg",
-                    InstructionPatient = "Every 8 hours",
-                    Status = "Not Given",
-                    HasReminder = true
-                });
+                    mockMeds.Add(new MedicationListItemDto
+                    {
+                        MedicationId = 502,
+                        PatientId = 101,
+                        
+                        // --- NULL FIXES START ---
+                        PatientName = patientName,
+                        PatientAge = patientAge,
+                        Ward = patientWard,
+                        Bed = "BED-A",
+                        DaysInWard = 15,
+                        Form = "Capsule",
+                        FrequencyAmount = 2.0,
+                        FrequencyUnit = "DAY",
+                        // --- NULL FIXES END ---
+                        
+                        ProductName = "Ibuprofen",
+                        Quantity = 200,
+                        QuantityUnit = "mg",
+                        InstructionPatient = "Every 8 hours",
+                        Status = "Not Given",
+                        HasReminder = true
+                    });
+                }
             }
             else if (patientId == 102) // Maria Georgiou
             {
@@ -107,8 +140,20 @@ namespace EHRNurse.Api.Services
                 {
                     MedicationId = 601,
                     PatientId = 102,
+                    
+                    // --- NULL FIXES START ---
+                    PatientName = "Maria Georgiou",
+                    PatientAge = 74,
+                    Ward = "MWARD-2210",
+                    Bed = "BED-B",
+                    DaysInWard = 150,
+                    Form = "Liquid",
+                    FrequencyAmount = 1.0,
+                    FrequencyUnit = "DAY",
+                    // --- NULL FIXES END ---
+                    
                     ProductName = "Amoxicillin",
-                    Quantity = 1000, // Fixed: Double
+                    Quantity = 1000,
                     QuantityUnit = "mg",
                     InstructionPatient = "Morning only",
                     Status = "Not Given",
@@ -119,8 +164,9 @@ namespace EHRNurse.Api.Services
             return await Task.FromResult(mockMeds);
         }
 
-        // --- THIS WAS MISSING ---
-        // Helper for DateOnly
+        // =========================================================
+        // HELPER
+        // =========================================================
         private int CalculateAge(DateOnly dob)
         {
             var today = DateOnly.FromDateTime(DateTime.Now);
