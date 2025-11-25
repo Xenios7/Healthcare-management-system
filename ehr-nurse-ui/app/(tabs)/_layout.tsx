@@ -8,40 +8,17 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarStyle: { display: 'none' },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: theme.colors.mutedText,
       }}
     >
-      {/* Home Screen */}
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" color={color} size={size} />
-          ),
-        }}
-      />
-
-      {/* Profile Screen */}
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="person" color={color} size={size} />
-          ),
-        }}
-      />
-
-      {/* QR Code Scanner Screen  */}
+      <Tabs.Screen name="index" />
       <Tabs.Screen
         name="qrcode"
-        options={{
-          href: null,                     
-          tabBarStyle: { display: "none" },  
-        }}
+        options={{ href: null }}
       />
+      <Tabs.Screen name="Appointments" />
     </Tabs>
   );
 }

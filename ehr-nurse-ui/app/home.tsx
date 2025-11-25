@@ -251,13 +251,16 @@ export default function HomeScreen() {
               color={theme.colors.mutedText}
             />
           </Pressable>
+          <Link href="/Appointments" asChild>
           <Pressable style={styles.bottomItem}>
             <Ionicons
               name="calendar-outline"
               size={26}
               color={theme.colors.mutedText}
             />
+         
           </Pressable>
+          </Link>
         </View>
       </View>
     </SafeAreaView>

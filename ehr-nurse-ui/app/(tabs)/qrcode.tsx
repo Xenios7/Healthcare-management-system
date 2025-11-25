@@ -8,7 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 
 const BACKEND_BASE_URL = Platform.select({
   web: 'http://localhost:5164',
-  default: 'http://10.120.71.57:5164',
+  default: 'http://192.168.27.134:5164',
 });
 
 
