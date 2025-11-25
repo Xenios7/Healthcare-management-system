@@ -32,5 +32,12 @@ namespace EHRNurse.Api.Controllers
             // If no meds found, we can still return an empty list
             return Ok(meds);
         }
+
+        [HttpGet("{id}/nutrition")]
+        public async Task<ActionResult<IEnumerable<NutritionListItemDto>>> GetPatientNutrition(int id)
+        {
+            var nutrition = await _inpatientService.GetNutritionForPatientAsync(id);
+            return Ok(nutrition);
+        }
     }
 }
