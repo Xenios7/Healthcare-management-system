@@ -26,12 +26,14 @@ namespace EHRNurse.Api.Controllers
         [HttpGet("{id}/medication")]
         public async Task<ActionResult<IEnumerable<MedicationListItemDto>>> GetPatientMedications(
             int id, 
-            [FromQuery] DateOnly? date) // Nullable allows it to work even if frontend forgets the date
+            [FromQuery] DateOnly? date,
+            [FromQuery] string? status = "all") // Default to "all" if missing
         {
-            // If date is missing, default to Today
             var queryDate = date ?? DateOnly.FromDateTime(DateTime.Now);
-
-            var meds = await _inpatientService.GetMedicationsForPatientAsync(id, queryDate);
+            
+            // Pass the status to the service
+            var meds = await _inpatientService.GetMedicationsForPatientAsync(id, queryDate, status ?? "all");
+            
             return Ok(meds);
         }
     }

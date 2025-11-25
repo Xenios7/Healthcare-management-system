@@ -68,97 +68,83 @@ namespace EHRNurse.Api.Services
         // PHASE 2: Medication Per Patient (For Rafalia - Thursday)
         // UPDATED: Now accepts 'DateOnly date' for the UI Filter
         // =========================================================
-        public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId, DateOnly date)
+// UPDATED: Now accepts 'status'
+        public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId, DateOnly date, string status)
         {
             var mockMeds = new List<MedicationListItemDto>();
             var today = DateOnly.FromDateTime(DateTime.Now);
+            
+            // Normalize status to lowercase for easier comparison
+            var filterStatus = status.ToLower().Trim(); 
 
-            // --- Context for Mock Data (Extracted from GetAllInpatientsAsync) ---
+            // --- Context for Mock Data ---
             string patientName = patientId == 101 ? "John Smith" : (patientId == 102 ? "Maria Georgiou" : "Test Patient2");
             int patientAge = patientId == 101 ? 66 : 74;
             string patientWard = patientId == 101 ? "JWARD1101" : "MWARD-2210";
-            // -------------------------------------------------------------------
 
             if (patientId == 101) // John Smith
             {
                 if (date == today) 
                 {
+                    // Item 1: Paracetamol (Status = Given)
+                    // We add it ONLY if filter is "all" OR "given"
+                    if (filterStatus == "all" || filterStatus == "given")
+                    {
+                        mockMeds.Add(new MedicationListItemDto
+                        {
+                            MedicationId = 501,
+                            PatientId = 101,
+                            PatientName = patientName, PatientAge = patientAge, Ward = patientWard,
+                            Bed = "BED-A", DaysInWard = 15, Form = "Tablet", FrequencyAmount = 1, FrequencyUnit = "DAY",
+                            
+                            ProductName = "Paracetamol",
+                            Quantity = 500, QuantityUnit = "mg",
+                            InstructionPatient = "Take after meals",
+                            Status = "Given", // This matches the filter
+                            HasReminder = false
+                        });
+                    }
+
+                    // Item 2: Ibuprofen (Status = Not Given)
+                    // We add it ONLY if filter is "all" OR "not given"
+                    // (Note: UI might send "not_given" or "not given", check typically matches "not given" text)
+                    if (filterStatus == "all" || filterStatus.Contains("not"))
+                    {
+                        mockMeds.Add(new MedicationListItemDto
+                        {
+                            MedicationId = 502,
+                            PatientId = 101,
+                            PatientName = patientName, PatientAge = patientAge, Ward = patientWard,
+                            Bed = "BED-A", DaysInWard = 15, Form = "Capsule", FrequencyAmount = 2, FrequencyUnit = "DAY",
+
+                            ProductName = "Ibuprofen",
+                            Quantity = 200, QuantityUnit = "mg",
+                            InstructionPatient = "Every 8 hours",
+                            Status = "Not Given", // This matches the filter
+                            HasReminder = true
+                        });
+                    }
+                }
+            }
+            else if (patientId == 102) // Maria
+            {
+                // Amoxicillin is "Not Given"
+                if (filterStatus == "all" || filterStatus.Contains("not"))
+                {
                     mockMeds.Add(new MedicationListItemDto
                     {
-                        MedicationId = 501,
-                        PatientId = 101,
-                        
-                        // --- NULL FIXES START ---
-                        PatientName = patientName,
-                        PatientAge = patientAge,
-                        Ward = patientWard,
-                        Bed = "BED-A",
-                        DaysInWard = 15,
-                        Form = "Tablet",
-                        FrequencyAmount = 1.0,
-                        FrequencyUnit = "DAY",
-                        // --- NULL FIXES END ---
-                        
-                        ProductName = "Paracetamol",
-                        Quantity = 500,
-                        QuantityUnit = "mg",
-                        InstructionPatient = "Take after meals",
-                        Status = "Given",
+                        MedicationId = 601,
+                        PatientId = 102,
+                        PatientName = "Maria Georgiou", PatientAge = 74, Ward = "MWARD-2210",
+                        Bed = "BED-B", DaysInWard = 150, Form = "Liquid", FrequencyAmount = 1, FrequencyUnit = "DAY",
+
+                        ProductName = "Amoxicillin",
+                        Quantity = 1000, QuantityUnit = "mg",
+                        InstructionPatient = "Morning only",
+                        Status = "Not Given",
                         HasReminder = false
                     });
                 }
-                if (date == today)
-                {
-                    mockMeds.Add(new MedicationListItemDto
-                    {
-                        MedicationId = 502,
-                        PatientId = 101,
-                        
-                        // --- NULL FIXES START ---
-                        PatientName = patientName,
-                        PatientAge = patientAge,
-                        Ward = patientWard,
-                        Bed = "BED-A",
-                        DaysInWard = 15,
-                        Form = "Capsule",
-                        FrequencyAmount = 2.0,
-                        FrequencyUnit = "DAY",
-                        // --- NULL FIXES END ---
-                        
-                        ProductName = "Ibuprofen",
-                        Quantity = 200,
-                        QuantityUnit = "mg",
-                        InstructionPatient = "Every 8 hours",
-                        Status = "Not Given",
-                        HasReminder = true
-                    });
-                }
-            }
-            else if (patientId == 102) // Maria Georgiou
-            {
-                mockMeds.Add(new MedicationListItemDto
-                {
-                    MedicationId = 601,
-                    PatientId = 102,
-                    
-                    // --- NULL FIXES START ---
-                    PatientName = "Maria Georgiou",
-                    PatientAge = 74,
-                    Ward = "MWARD-2210",
-                    Bed = "BED-B",
-                    DaysInWard = 150,
-                    Form = "Liquid",
-                    FrequencyAmount = 1.0,
-                    FrequencyUnit = "DAY",
-                    // --- NULL FIXES END ---
-                    
-                    ProductName = "Amoxicillin",
-                    Quantity = 1000,
-                    QuantityUnit = "mg",
-                    InstructionPatient = "Morning only",
-                    Status = "Not Given",
-                    HasReminder = false
-                });
             }
 
             return await Task.FromResult(mockMeds);
