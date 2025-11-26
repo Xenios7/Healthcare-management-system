@@ -18,12 +18,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import Icon from 'react-native-vector-icons/Feather';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
 
 import {
   getAppointments,
-  markCompleted,
+  markCompleted,  
   markPostponed,
   markDoNotAttempt,
   AppointmentPatientDto,
@@ -465,50 +463,6 @@ export default function AppointmentsScreen() {
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
-
-      <View style={styles.bottomNav}>
-        <Link href="/home" asChild>
-          <TouchableOpacity style={styles.bottomItem}>
-            <Ionicons
-              name="home"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-        </Link>
-
-        <TouchableOpacity style={styles.bottomItem}>
-          <MaterialCommunityIcons
-            name="clipboard-text-outline"
-            size={26}
-            color={theme.colors.mutedText}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.bottomItem}>
-          <MaterialCommunityIcons
-            name="pill"
-            size={26}
-            color={theme.colors.mutedText}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.bottomItem}>
-          <MaterialCommunityIcons
-            name="silverware-fork-knife"
-            size={26}
-            color={theme.colors.mutedText}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.bottomItem}>
-          <Ionicons
-            name="calendar-outline"
-            size={26}
-            color={theme.colors.primary}
-          />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -738,20 +692,5 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     fontSize: 12,
-  },
-
-  bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: 8,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.card,
-  },
-  bottomItem: {
-    flex: 1,
-    alignItems: 'center',
   },
 });

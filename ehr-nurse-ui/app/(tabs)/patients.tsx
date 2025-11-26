@@ -6,17 +6,16 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
-} from "react-native";
+ Platform } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import FeatherIcon from "react-native-vector-icons/Feather";
-import { Link, router } from "expo-router";
+import {  router } from "expo-router";
 import { theme } from "../../styles/theme";
-import { Platform } from "react-native";
+
 
 const API_BASE_URL = Platform.select({
   web: "http://localhost:5164",
-  default: "http://172.22.240.1:5164", // προσαρμόζεις αν χρειάζεται
+  default: "http://172.25.152.57:5164", 
 });
 
 type PatientCard = {
@@ -44,7 +43,6 @@ export default function PatientsScreen() {
     );
   }, []);
 
-  // αν έχεις API, φέρε τους ασθενείς από εκεί
   useEffect(() => {
     const loadPatients = async () => {
       try {
@@ -95,7 +93,7 @@ export default function PatientsScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={styles.safeContainer}>
       <View style={styles.inner}>
         {/* HEADER */}
         <View style={styles.header}>
@@ -218,49 +216,8 @@ export default function PatientsScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        {/* BOTTOM NAV – clipboard ενεργό */}
-        <View style={styles.bottomNav}>
-          <Link href="/home" asChild>
-            <TouchableOpacity style={styles.bottomItem}>
-              <Ionicons name="home" size={26} color={theme.colors.mutedText} />
-            </TouchableOpacity>
-          </Link>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="clipboard-text-outline"
-              size={26}
-              color={theme.colors.primary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="pill"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="silverware-fork-knife"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-        </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -354,7 +311,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#8CD24E",
+    backgroundColor: "#10B981",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
@@ -386,20 +343,5 @@ const styles = StyleSheet.create({
   separator: {
     marginHorizontal: 6,
     color: theme.colors.mutedText,
-  },
-
-  bottomNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: 8,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.card,
-  },
-  bottomItem: {
-    flex: 1,
-    alignItems: "center",
   },
 });

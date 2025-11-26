@@ -9,8 +9,7 @@ import {
   TextInput,
   RefreshControl,
   useWindowDimensions,
-  SafeAreaView,
-} from "react-native";
+ Platform } from "react-native";
 
 import Animated, {
   useSharedValue,
@@ -21,39 +20,16 @@ import Animated, {
 
 import FeatherIcon from "react-native-vector-icons/Feather";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import { theme } from "../../styles/theme";
-import { Platform } from "react-native";
+import {
+  getMedicationSchedule,
+  MedicationFilter,
+  MedicationListItemDto,
+} from "../utils/medicationsApi";
 
-const API_BASE_URL = Platform.select({
-  web: "http://localhost:5164",
-  default: "http://172.22.240.1:5164",
-});
 
-type FilterType = "all" | "not_given" | "given";
 
-type MedCard = {
-  MedicationId: number;
-  PatientId: number;
-  PatientName: string;
-  PatientAge: number | null;
-  Ward: string;
-  Bed: string;
-  DaysInWard: number;
-  ProductName: string;
-  Form: string | null;
-  Quantity: number;
-  QuantityUnit: string;
-  FrequencyAmount: number;
-  FrequencyUnit: string;
-  DurationAmount: number;
-  DurationUnit: string;
-  Route: string | null;
-  InstructionPatient: string | null;
-  EndDate: string | null;
-  Status: string;
-  HasReminder: boolean;
-};
 
 const PAST_DAYS = 30;
 const FUTURE_DAYS = 120;
@@ -84,12 +60,7 @@ function isSameDay(a: Date, b: Date) {
     a.getDate() === b.getDate()
   );
 }
-
-function formatDateKey(d: Date) {
-  return d.toISOString().substring(0, 10);
-}
-
-function getFilterLabel(f: FilterType) {
+function getFilterLabel(f: MedicationFilter) {
   if (f === "all") return "All";
   if (f === "not_given") return "Not Given";
   if (f === "given") return "Given";
@@ -141,11 +112,10 @@ const DayItemAnimated: React.FC<DayItemAnimatedProps> = ({
 };
 
 export default function MedicationScreen() {
+  const [filter, setFilter] = useState<MedicationFilter>("all");
+const [meds, setMeds] = useState<MedicationListItemDto[]>([]);
   const { width: windowWidth } = useWindowDimensions();
   const dayWidth = Math.min(82, (windowWidth - 32) / 4.5);
-
-  const [filter, setFilter] = useState<FilterType>("all");
-  const [meds, setMeds] = useState<MedCard[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -159,36 +129,32 @@ export default function MedicationScreen() {
   const selectedScale = useSharedValue(1);
   const [lastSynced] = useState(new Date());
 
-  const loadMeds = useCallback(
-    async (isRefresh = false) => {
-      if (!selectedDate) return;
+ const loadMeds = useCallback(
+  async (isRefresh = false) => {
+    if (!selectedDate) return;
 
-      try {
-        setError(null);
-        if (!isRefresh) setLoading(true);
+    try {
+      setError(null);
+      if (!isRefresh) setLoading(true);
 
-        const statusParam = filter;
-        const dateKey = formatDateKey(selectedDate);
+      const data = await getMedicationSchedule(
+        filter,
+        selectedDate,
+        searchQuery
+      );
 
-        const url =
-          `${API_BASE_URL}/api/Medications/schedule` +
-          `?status=${encodeURIComponent(statusParam)}` +
-          `&date=${encodeURIComponent(dateKey)}` +
-          `&search=${encodeURIComponent(searchQuery)}`;
+      setMeds(data);
+    } catch (e: any) {
+      console.log("Error loading meds", e);
+      setError(e?.message ?? "Failed to load medications");
+      setMeds([]);
+    } finally {
+      if (!isRefresh) setLoading(false);
+    }
+  },
+  [filter, selectedDate, searchQuery]
+);
 
-        const res = await fetch(url);
-        const data = (await res.json()) as MedCard[];
-        setMeds(data);
-      } catch (e: any) {
-        console.log("Error loading meds", e);
-        setError(e?.message ?? "Failed to load medications");
-        setMeds([]);
-      } finally {
-        if (!isRefresh) setLoading(false);
-      }
-    },
-    [filter, selectedDate, searchQuery]
-  );
 
   useEffect(() => {
     if (!selectedDate && days.length > 0) {
@@ -228,7 +194,7 @@ export default function MedicationScreen() {
 
   const renderFilterButtons = () => (
     <View style={styles.segmentContainer}>
-      {(["all", "not_given", "given"] as FilterType[]).map((f) => {
+      {(["all", "not_given", "given"] as MedicationFilter[]).map((f) => {
         const active = filter === f;
         const label = getFilterLabel(f);
 
@@ -289,120 +255,134 @@ export default function MedicationScreen() {
     </View>
   );
 
-  const renderMedItem = ({ item: med }: { item: MedCard }) => {
-    return (
-      <View style={styles.medCard}>
-        <View style={styles.medTopRow}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitial}>{med.PatientName.charAt(0)}</Text>
+ const renderMedItem = ({ item: med }: { item: MedicationListItemDto }) => {
+  return (
+    <View style={styles.medCard}>
+      <View style={styles.medTopRow}>
+        <View style={styles.avatarCircle}>
+          <Text style={styles.avatarInitial}>
+            {med.patientName.charAt(0)}
+          </Text>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            <Text style={styles.patientName} numberOfLines={1}>
+              {med.patientName} ({med.patientAge ?? "?"}yo)
+            </Text>
+
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color={theme.colors.mutedText}
+            />
           </View>
 
-          <View style={{ flex: 1 }}>
-            <View
+          <View style={styles.patientMetaRow}>
+            <MaterialCommunityIcons
+              name="hospital-building"
+              size={14}
+              color={theme.colors.mutedText}
+            />
+            <Text style={styles.patientMetaText}>WARD – {med.ward}</Text>
+
+            <Text
               style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
+                marginHorizontal: 6,
+                color: theme.colors.mutedText,
               }}
             >
-              <Text style={styles.patientName} numberOfLines={1}>
-                {med.PatientName} ({med.PatientAge ?? "?"}yo)
-              </Text>
-
-              <Ionicons
-                name="chevron-forward"
-                size={20}
-                color={theme.colors.mutedText}
-              />
-            </View>
-
-            <View style={styles.patientMetaRow}>
-              <MaterialCommunityIcons
-                name="hospital-building"
-                size={14}
-                color={theme.colors.mutedText}
-              />
-              <Text style={styles.patientMetaText}>WARD – {med.Ward}</Text>
-
-              <Text style={{ marginHorizontal: 6, color: theme.colors.mutedText }}>
-                |
-              </Text>
-
-              <MaterialCommunityIcons
-                name="bed-outline"
-                size={14}
-                color={theme.colors.mutedText}
-              />
-              <Text style={styles.patientMetaText}>{med.Bed}</Text>
-            </View>
-
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-              <Ionicons
-                name="calendar-outline"
-                size={14}
-                color={theme.colors.mutedText}
-              />
-              <Text style={styles.patientMetaText}>{med.DaysInWard} days</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.topSeparator} />
-
-        <View style={styles.medInfoBlock}>
-          <View style={styles.medNameRow}>
-            <MaterialCommunityIcons
-              name="pill"
-              size={18}
-              color={theme.colors.primaryDark}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.medName}>{med.ProductName}</Text>
-          </View>
-          <Text style={styles.doseText}>
-            {med.Quantity} {med.QuantityUnit} • {med.FrequencyAmount}{" "}
-            {med.FrequencyUnit}
-          </Text>
-        </View>
-
-        <View style={styles.medNotes}>
-          <Text style={styles.medNotesText}>
-            - Instructions: {med.InstructionPatient ?? "None"}
-          </Text>
-          <Text style={styles.medNotesText}>
-            - End Date: {med.EndDate ? med.EndDate.toString().slice(0, 10) : "n/a"}
-          </Text>
-        </View>
-
-        <View style={styles.medBottomRow}>
-          <TouchableOpacity style={styles.addReminderWrapper}>
-            <Ionicons
-              name={med.HasReminder ? "notifications" : "notifications-outline"}
-              size={18}
-              color={theme.colors.primaryDark}
-              style={{ marginRight: 4 }}
-            />
-            <Text
-              style={[
-                styles.addReminderText,
-                med.HasReminder && styles.addReminderTextActive,
-              ]}
-            >
-              {med.HasReminder ? "Remove reminder" : "Add reminder"}
+              |
             </Text>
-          </TouchableOpacity>
 
-          <View style={styles.checkButton} />
+            <MaterialCommunityIcons
+              name="bed-outline"
+              size={14}
+              color={theme.colors.mutedText}
+            />
+            <Text style={styles.patientMetaText}>{med.bed}</Text>
+          </View>
+
+          <View
+            style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}
+          >
+            <Ionicons
+              name="calendar-outline"
+              size={14}
+              color={theme.colors.mutedText}
+            />
+            <Text style={styles.patientMetaText}>
+              {med.daysInWard} days
+            </Text>
+          </View>
         </View>
       </View>
-    );
-  };
+
+      <View style={styles.topSeparator} />
+
+      <View style={styles.medInfoBlock}>
+        <View style={styles.medNameRow}>
+          <MaterialCommunityIcons
+            name="pill"
+            size={18}
+            color={theme.colors.primaryDark}
+            style={{ marginRight: 6 }}
+          />
+          <Text style={styles.medName}>{med.productName}</Text>
+        </View>
+        <Text style={styles.doseText}>
+          {med.quantity} {med.quantityUnit} • {med.frequencyAmount}{" "}
+          {med.frequencyUnit}
+        </Text>
+      </View>
+
+      <View style={styles.medNotes}>
+        <Text style={styles.medNotesText}>
+          - Instructions: {med.instructionPatient ?? "None"}
+        </Text>
+        <Text style={styles.medNotesText}>
+          - End Date: {med.endDate
+            ? med.endDate.slice(0, 10)
+            : "n/a"}
+        </Text>
+      </View>
+
+      <View style={styles.medBottomRow}>
+        <TouchableOpacity style={styles.addReminderWrapper}>
+          <Ionicons
+            name={med.hasReminder ? "notifications" : "notifications-outline"}
+            size={18}
+            color={theme.colors.primaryDark}
+            style={{ marginRight: 4 }}
+          />
+          <Text
+            style={[
+              styles.addReminderText,
+              med.hasReminder && styles.addReminderTextActive,
+            ]}
+          >
+            {med.hasReminder ? "Remove reminder" : "Add reminder"}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.checkButton} />
+      </View>
+    </View>
+  );
+};
+
 
   const placeholderText = `Search ${getFilterLabel(filter).toLowerCase()} medications`;
   const visibleMeds = meds;
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={styles.safeContainer}>
       <View style={styles.inner}>
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
@@ -454,7 +434,7 @@ export default function MedicationScreen() {
         ) : (
           <FlatList
             data={visibleMeds}
-            keyExtractor={(item) => item.MedicationId.toString()}
+             keyExtractor={(item) => item.medicationId.toString()} 
             renderItem={renderMedItem}
             contentContainerStyle={
               visibleMeds.length === 0
@@ -479,48 +459,8 @@ export default function MedicationScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-
-        <View style={styles.bottomNav}>
-          <Link href="/home" asChild>
-            <TouchableOpacity style={styles.bottomItem}>
-              <Ionicons name="home" size={26} color={theme.colors.mutedText} />
-            </TouchableOpacity>
-          </Link>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="clipboard-text-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="pill"
-              size={26}
-              color={theme.colors.primary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="silverware-fork-knife"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-        </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -785,20 +725,5 @@ const styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
     fontSize: 12,
-  },
-
-  bottomNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: 8,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.card,
-  },
-  bottomItem: {
-    flex: 1,
-    alignItems: "center",
   },
 });

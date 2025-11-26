@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 
 const API_BASE_URL = Platform.select({
     web: 'http://localhost:5164',
-    default: 'http://192.168.27.134:5164',
+    default: 'http://172.25.152.57:5164',
 });
 
 export type AppointmentFilter = 'upcoming' | 'completed' | 'all';

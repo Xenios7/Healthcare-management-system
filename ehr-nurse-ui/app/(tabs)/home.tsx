@@ -7,8 +7,8 @@ import {
   Pressable,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { theme } from "../styles/theme";
-import { Link, router } from "expo-router";
+import { theme } from "../../styles/theme";
+import {router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -207,62 +207,6 @@ export default function HomeScreen() {
           </Text>
           <ShiftManagementCard />
         </ScrollView>
-
-        <View style={styles.bottomNav}>
-          <Pressable
-            style={styles.bottomItem}
-            onPress={() => router.replace("/home")}
-          >
-            <Ionicons
-              name="home"
-              size={26}
-              color={theme.colors.primary}
-            />
-          </Pressable>
-
-          <Pressable
-            style={styles.bottomItem}
-            onPress={() => router.replace("/patients")}
-          >
-            <MaterialCommunityIcons
-              name="clipboard-text-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </Pressable>
-
-          <Pressable
-            style={styles.bottomItem}
-            onPress={() => router.replace("/medication")}
-          >
-            <MaterialCommunityIcons
-              name="pill"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </Pressable>
-
-          <Pressable
-            style={styles.bottomItem}
-            onPress={() => router.replace("/nutrition")}
-          >
-            <MaterialCommunityIcons
-              name="silverware-fork-knife"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </Pressable>
-          <Link href="/Appointments" asChild>
-          <Pressable style={styles.bottomItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-         
-          </Pressable>
-          </Link>
-        </View>
       </View>
     </SafeAreaView>
   );
@@ -730,19 +674,5 @@ const styles = StyleSheet.create({
     fontSize: theme.font.sm,
     fontWeight: "600",
     color: "#ffffff",
-  },
-
-  bottomNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-  },
-  bottomItem: {
-    flex: 1,
-    alignItems: "center",
   },
 });

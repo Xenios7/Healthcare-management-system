@@ -9,7 +9,6 @@ import {
   TextInput,
   RefreshControl,
   useWindowDimensions,
-  SafeAreaView,
   Platform,
 } from "react-native";
 
@@ -22,12 +21,12 @@ import Animated, {
 
 import FeatherIcon from "react-native-vector-icons/Feather";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
+import {router } from "expo-router";
 import { theme } from "../../styles/theme";
 
 const API_BASE_URL = Platform.select({
   web: "http://localhost:5164",
-  default: "http://172.22.240.2:5164",
+  default: "http://172.25.152.57:5164",
 });
 
 type FilterType = "all" | "not_given" | "given";
@@ -414,7 +413,7 @@ export default function NutritionScreen() {
   const visibleMeals = meals;
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <View style={styles.safeContainer}>
       <View style={styles.inner}>
         {/* HEADER με ίδιο styling και back -> home */}
         <View style={styles.header}>
@@ -490,49 +489,8 @@ export default function NutritionScreen() {
             <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
-
-        {/* bottom nav – ενεργό το fork/knife */}
-        <View style={styles.bottomNav}>
-          <Link href="/home" asChild>
-            <TouchableOpacity style={styles.bottomItem}>
-              <Ionicons name="home" size={26} color={theme.colors.mutedText} />
-            </TouchableOpacity>
-          </Link>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="clipboard-text-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="pill"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="silverware-fork-knife"
-              size={26}
-              color={theme.colors.primary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.bottomItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </TouchableOpacity>
-        </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -799,20 +757,5 @@ const styles = StyleSheet.create({
     color: "white",
     textAlign: "center",
     fontSize: 12,
-  },
-
-  bottomNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: 8,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.card,
-  },
-  bottomItem: {
-    flex: 1,
-    alignItems: "center",
   },
 });

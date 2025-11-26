@@ -9,12 +9,10 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons , MaterialCommunityIcons } from '@expo/vector-icons';
 import { g } from '../../styles/global';
 import { theme } from '../../styles/theme';
 import { router } from 'expo-router';
@@ -24,7 +22,7 @@ import { biometricPrompt, canUseFingerprint } from '../utils/biometricAuth';
 
 const API_BASE_URL = Platform.select({
   web: 'http://localhost:5164',
-  default: 'http://172.20.10.2:5164',
+  default: 'http://172.25.152.57:5164',
 });
 
 const PASSWORD_LOGIN_FLAG_KEY = 'has_completed_password_login';
@@ -140,7 +138,7 @@ export default function Login() {
     Platform.OS === 'android' && biometricAvailable && hasCompletedPasswordLogin;
 
   return (
-    <SafeAreaView style={g.screen}>
+    <View style={g.screen}>
       <KeyboardAvoidingView
         style={{ width: '100%', alignItems: 'center' }}
         behavior={Platform.select({ ios: 'padding', android: undefined })}
@@ -302,7 +300,7 @@ export default function Login() {
           <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -19,35 +19,32 @@ export default function Index() {
 
         if (!token) {
           // No session at all → go to normal login
-          router.replace('/login');
+          router.replace('/(auth)/login');
           return;
         }
 
        
-        const result = await biometricPrompt();
+        const ok = await biometricPrompt();
 
-        if (result.success) {
-          
-          router.replace('/home');
-        } else {
-          
+        if (!ok) {
           await clearToken();
-          Alert.alert(
-            'Authentication required',
-            'Please login with your email and password.',
-          );
-          router.replace('/login');
-        }
-      } catch (err) {
-        console.warn('Auth / biometric check failed', err);
-        router.replace('/login');
+          router.replace('/(auth)/login');
+          return;
+        } 
+        router.replace('/(tabs)/home');
+      } catch (error) {
+        Alert.alert('Error', 'An unexpected error occurred. Please log in again.');
+        await clearToken();
+        router.replace('/(auth)/login');
       } finally {
         setChecking(false);
       }
+          
     };
 
+
     run();
-  }, [router]);
+  }, []);
 
   if (checking) {
     return (
