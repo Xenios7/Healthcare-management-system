@@ -19,11 +19,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, saveToken } from '../utils/authStorage';
 import { biometricPrompt, canUseFingerprint } from '../utils/biometricAuth';
-
-const API_BASE_URL = Platform.select({
-  web: 'http://localhost:5164',
-  default: 'http://172.25.152.57:5164',
-});
+import { API_BASE_URL } from '../(tabs)/Api_Base_Url';
 
 const PASSWORD_LOGIN_FLAG_KEY = 'has_completed_password_login';
 

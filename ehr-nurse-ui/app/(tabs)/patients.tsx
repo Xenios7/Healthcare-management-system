@@ -6,17 +6,13 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
- Platform } from "react-native";
+ } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import FeatherIcon from "react-native-vector-icons/Feather";
 import {  router } from "expo-router";
 import { theme } from "../../styles/theme";
+import { API_BASE_URL } from "./Api_Base_Url";
 
-
-const API_BASE_URL = Platform.select({
-  web: "http://localhost:5164",
-  default: "http://172.25.152.57:5164", 
-});
 
 type PatientCard = {
   id: number;

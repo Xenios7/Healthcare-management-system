@@ -1,5 +1,5 @@
 //reuse the API base URL from medicationsApi.ts
-import { API_BASE_URL } from "./medicationsApi";
+import { API_BASE_URL } from "../(tabs)/Api_Base_Url";
 
 export type NutritionFilter = "all" | "not_given" | "given";
 

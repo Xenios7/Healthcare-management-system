@@ -1,17 +1,10 @@
 import React, { useRef } from "react";
-import { View, Text, StyleSheet, Alert, Pressable, Platform } from "react-native";
+import { View, Text, StyleSheet, Alert, Pressable } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { router } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-
-
-const BACKEND_BASE_URL = Platform.select({
-  web: 'http://localhost:5164',
-  default: 'http://172.25.152.57:5164',
-});
-
-
+import { API_BASE_URL } from "./Api_Base_Url";
 
 export default function QRCodeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -40,7 +33,7 @@ export default function QRCodeScreen() {
 
     try {
       // Calling backend
-      const response = await fetch(`${BACKEND_BASE_URL}/api/barcode/scan`, {
+      const response = await fetch(`${API_BASE_URL}/api/barcode/scan`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
