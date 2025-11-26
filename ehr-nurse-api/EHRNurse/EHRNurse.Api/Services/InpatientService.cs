@@ -82,7 +82,7 @@ namespace EHRNurse.Api.Services
             int patientAge = patientId == 101 ? 66 : 74;
             string patientWard = patientId == 101 ? "JWARD1101" : "MWARD-2210";
 
-            if (patientId == 101) // John Smith
+            if (patientId == 101) // John Smith//
             {
                 if (date == today) 
                 {
