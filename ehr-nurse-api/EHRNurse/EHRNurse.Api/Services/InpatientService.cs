@@ -1,157 +1,149 @@
 using EHRNurse.Api.Dto;
 using EHRNurse.Api.Interfaces;
 using EHRNurse.Data.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace EHRNurse.Api.Services
 {
     public class InpatientService : IInpatientService
     {
-        // Constructor: Later you will inject your DB Context here
-        // private readonly EhrNurseContext _context;
-        // public InpatientService(EhrNurseContext context) => _context = context;
+        private readonly AppDbContext _db;
 
-        // PHASE 1: Main Inpatient List (For Christos - Deadline Monday)
+        public InpatientService(AppDbContext db)
+        {
+            _db = db;
+        }
+
         public async Task<IEnumerable<InpatientListItemDto>> GetAllInpatientsAsync()
         {
-            // 1. SIMULATE DATABASE FETCH
-            var patientsFromDb = new List<Patient>
+            var dtoList = new List<InpatientListItemDto>
             {
-                new Patient
+                new InpatientListItemDto
                 {
-                    Id = 101,
-                    FirstName = "John",
-                    LastName = "Smith",
-                    DateOfBirth = new DateOnly(1959, 5, 20), // 66 years old
-                    GenderId = 1,
-                    Email = "john.smith@test.com",
-                    IsActive = true
-                },
-                new Patient
-                {
-                    Id = 102,
-                    FirstName = "Maria",
-                    LastName = "Georgiou",
-                    DateOfBirth = new DateOnly(1951, 8, 15), // 74 years old
-                    GenderId = 2,
-                    Email = "maria.g@test.com",
-                    IsActive = true
-                },
-                 new Patient
-                {
-                    Id = 103,
-                    FirstName = "Test",
-                    LastName = "Patient2",
-                    DateOfBirth = new DateOnly(1959, 1, 1),
-                    GenderId = 1,
-                    Email = "test@test.com",
-                    IsActive = true
+                    PatientId = 19,
+                    FirstName = "Alexandros",
+                    LastName = "Theodosiou",
+                    Age = 40,
+                    WardId = "ER-ROOM-5",
+                    Diagnosis = "Post-Surgery",
+                    HasPendingMeds = true,
+                    HasPendingMeals = true
                 }
             };
-
-            // 2. MAP LOGIC
-            var dtoList = patientsFromDb.Select(p => new InpatientListItemDto
-            {
-                PatientId = p.Id,
-                FirstName = p.FirstName,
-                LastName = p.LastName,
-                Age = CalculateAge(p.DateOfBirth), // This calls the method at the bottom
-                
-                // MAPPING LOGIC FOR WARD (Mocked for now)
-                WardId = p.Id == 101 ? "JWARD1101" : (p.Id == 102 ? "MWARD-2210" : "TWARD-1"),
-
-                // MAPPING LOGIC FOR DIAGNOSIS (Mocked for now)
-                Diagnosis = p.Id == 101 ? "Stable" : (p.Id == 102 ? "Observation" : "Recovery"),
-
-                // LOGIC FOR ALERTS
-                HasPendingMeds = p.Id == 101, 
-                HasPendingMeals = false
-            }).ToList();
-
             return await Task.FromResult(dtoList);
         }
 
-        // PHASE 2: Medication Per Patient (For Rafalia - Deadline Thursday)
-        public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId)
+        public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(
+            int patientId, DateOnly date, string status)
         {
-            var mockMeds = new List<MedicationListItemDto>();
-
-            // Mock Data Logic
-            if (patientId == 101) // John Smith
-            {
-                mockMeds.Add(new MedicationListItemDto
-                {
-                    MedicationId = 501,
-                    PatientId = 101,
-                    ProductName = "Paracetamol",
-                    Quantity = 500, // Fixed: Double
-                    QuantityUnit = "mg",
-                    InstructionPatient = "Take after meals",
-                    Status = "Given", 
-                    HasReminder = false
-                });
-                mockMeds.Add(new MedicationListItemDto
-                {
-                    MedicationId = 502,
-                    PatientId = 101,
-                    ProductName = "Ibuprofen",
-                    Quantity = 200, // Fixed: Double
-                    QuantityUnit = "mg",
-                    InstructionPatient = "Every 8 hours",
-                    Status = "Not Given",
-                    HasReminder = true
-                });
-            }
-            else if (patientId == 102) // Maria Georgiou
-            {
-                mockMeds.Add(new MedicationListItemDto
-                {
-                    MedicationId = 601,
-                    PatientId = 102,
-                    ProductName = "Amoxicillin",
-                    Quantity = 1000, // Fixed: Double
-                    QuantityUnit = "mg",
-                    InstructionPatient = "Morning only",
-                    Status = "Not Given",
-                    HasReminder = false
-                });
-            }
-
-            return await Task.FromResult(mockMeds);
+            return await Task.FromResult(new List<MedicationListItemDto>());
         }
 
-        // PHASE 3: Nutrition Per Patient
-        public async Task<IEnumerable<NutritionListItemDto>> GetNutritionForPatientAsync(int patientId)
+        public async Task<IEnumerable<NutritionListItemDto>> GetNutritionForPatientAsync(
+            int patientId, DateOnly date, string status)
         {
-            var mockNutrition = new List<NutritionListItemDto>();
+            var filterStatus = status.ToLower().Trim();
+            var targetDate = date.ToDateTime(TimeOnly.MinValue);
+            var startOfDay = targetDate.Date;
+            var endOfDay = startOfDay.AddDays(1).AddTicks(-1);
+            
+            var query = _db.FoodData
+                .Where(fd => fd.PatientId == patientId)
+                .Where(fd => fd.OnSetDateTime >= startOfDay && fd.OnSetDateTime <= endOfDay)
+                .AsQueryable();
 
-            if (patientId == 101) // John Smith
+            if (filterStatus == "served" || filterStatus == "completed")
             {
-                mockNutrition.Add(new NutritionListItemDto
-                {
-                    FoodId = 701,
-                    PatientId = 101,
-                    MealType = "Breakfast",
-                    MealName = "Oatmeal with fruit",
-                    Instructions = "Soft consistency",
-                    PortionSize = "Full",
-                    PortionEatenPercentage = 100,
-                    Status = "Given",
-                    HasReminder = false
-                });
+                query = query.Where(fd => fd.IsSubmitted == true);
             }
-            // Add more mock data if you want
+            else if (filterStatus == "pending" || filterStatus == "not given")
+            {
+                query = query.Where(fd => fd.IsSubmitted == false);
+            }
 
-            return await Task.FromResult(mockNutrition);
+            var patient = await _db.Patients.FindAsync(patientId);
+            var foodRecords = await query.Include(fd => fd.FoodType).ToListAsync();
+            
+            if (!foodRecords.Any())
+            {
+                return new List<NutritionListItemDto>();
+            }
+
+            // Get accommodation by PatientId (not VisitId)
+            var latestAccommodation = await _db.AccommodationData
+                .Include(a => a.Bed)
+                .Where(a => a.PatientId == patientId && a.IsActive)
+                .OrderByDescending(a => a.CreationDate)
+                .FirstOrDefaultAsync();
+            
+            // Get ward info from the bed
+            string ward = "Unknown";
+            string bed = "Unknown";
+            
+            if (latestAccommodation?.Bed != null)
+            {
+                bed = latestAccommodation.Bed.Name ?? "Unknown";
+                
+                // Get ward from bed's room
+                var bedWithRoom = await _db.AccommodationBeds
+                    .Include(b => b.Room)
+                        .ThenInclude(r => r.Ward)
+                    .FirstOrDefaultAsync(b => b.Id == latestAccommodation.BedId);
+                
+                ward = bedWithRoom?.Room?.Ward?.Name ?? "Unknown";
+            }
+                
+            var daysInWard = CalculateDaysInWard(latestAccommodation);
+
+            var result = foodRecords.Select(fd => new NutritionListItemDto
+            {
+                FoodId = fd.Id,
+                PatientId = fd.PatientId,
+                PatientName = patient != null ? $"{patient.FirstName} {patient.LastName}" : "Unknown",
+                PatientAge = patient != null ? CalculateAge(patient.DateOfBirth) : null,
+                Ward = ward,
+                Bed = bed,
+                DaysInWard = daysInWard,
+                FoodType = fd.FoodType?.Display ?? "Unknown",
+                FoodTypeCode = fd.FoodType?.Code,
+                PortionEatenPercentage = fd.PortionEatenPercentage,
+                PortionSize = fd.PortionSize,
+                Description = fd.Description,
+                OnSetDateTime = DateTime.SpecifyKind(fd.OnSetDateTime, DateTimeKind.Utc),
+                Status = fd.IsSubmitted ? "Served" : "Pending",
+                HasAllergyWarning = fd.Description != null && 
+                                   (fd.Description.ToLower().Contains("allerg") ||
+                                    fd.Description.ToLower().Contains("warning"))
+            }).ToList();
+
+            return result;
         }
 
-        // --- THIS WAS MISSING ---
-        // Helper for DateOnly
-        private int CalculateAge(DateOnly dob)
+        public async Task<IEnumerable<MedicationListItemDto>> GetMedicationScheduleAsync(
+            DateOnly date, string status, string? search)
         {
-            var today = DateOnly.FromDateTime(DateTime.Now);
-            var age = today.Year - dob.Year;
-            if (dob > today.AddYears(-age)) age--;
+            return await Task.FromResult(new List<MedicationListItemDto>());
+        }
+
+        public async Task<IEnumerable<NutritionListItemDto>> GetNutritionScheduleAsync(
+            DateOnly date, string status, string? search)
+        {
+            return await Task.FromResult(new List<NutritionListItemDto>());
+        }
+
+        private int? CalculateAge(DateOnly dateOfBirth)
+        {
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            var age = today.Year - dateOfBirth.Year;
+            if (dateOfBirth > today.AddYears(-age)) age--;
             return age;
+        }
+
+        private int CalculateDaysInWard(AccommodationDatum? accommodation)
+        {
+            if (accommodation?.CreationDate == null)
+                return 0;
+            return (DateTime.Now - accommodation.CreationDate).Days;
         }
     }
 }
