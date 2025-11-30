@@ -9,23 +9,17 @@ import {
   Animated,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { g } from '../../styles/global';
 import { theme } from '../../styles/theme';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, saveToken } from '../utils/authStorage';
 import { biometricPrompt, canUseFingerprint } from '../utils/biometricAuth';
-
-const API_BASE_URL = Platform.select({
-  web: 'http://localhost:5164',
-  default: 'http://192.168.27.134:5164',
-});
+import { API_BASE_URL } from '../(tabs)/Api_Base_Url';
 
 const PASSWORD_LOGIN_FLAG_KEY = 'has_completed_password_login';
 
@@ -36,7 +30,6 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  // 🔹 ΝΕΑ state για fingerprint λογική
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [hasCompletedPasswordLogin, setHasCompletedPasswordLogin] =
     useState(false);
@@ -62,14 +55,11 @@ export default function Login() {
 
   useEffect(() => {
     (async () => {
-      // ❗ Αν δεν είναι ANDROID, δεν ασχολούμαστε καν με fingerprint
       if (Platform.OS !== 'android') return;
 
-      // Έλεγχος αν υπάρχει fingerprint hardware / permissions
       const fingerprintAvailable = await canUseFingerprint();
       setBiometricAvailable(fingerprintAvailable);
 
-      // Έλεγχος αν έχει ξανακάνει login με password
       const passwordFlag = await AsyncStorage.getItem(PASSWORD_LOGIN_FLAG_KEY);
       setHasCompletedPasswordLogin(passwordFlag === 'true');
     })();
@@ -97,12 +87,8 @@ export default function Login() {
       const data = await response.json();
       if (!data.token) throw new Error('Login failed: no token received.');
 
-      // 🔹 Αποθήκευση first name (όπως πριν)
       const firstNameFromApi =
-        data.user?.firstName ||
-        data.firstName ||
-        data.name ||
-        '';
+        data.user?.firstName || data.firstName || data.name || '';
 
       if (firstNameFromApi) {
         await AsyncStorage.setItem('user_first_name', firstNameFromApi);
@@ -111,17 +97,14 @@ export default function Login() {
       await saveToken(data.token);
       await AsyncStorage.setItem('auth_token', data.token);
 
-      // 🔐 ΕΔΩ ΣΗΜΕΙΩΝΟΥΜΕ ΟΤΙ ΕΚΑΝΕ LOGIN ΜΕ ΚΩΔΙΚΟ
       await AsyncStorage.setItem(PASSWORD_LOGIN_FLAG_KEY, 'true');
-      setHasCompletedPasswordLogin(true); // ενημερώνουμε και το state αμέσως
-
-      // Αν είμαστε σε Android, ενημερώνουμε αν υπάρχει fingerprint
+      setHasCompletedPasswordLogin(true); 
       if (Platform.OS === 'android') {
         const fingerprintAvailable = await canUseFingerprint();
         setBiometricAvailable(fingerprintAvailable);
       }
 
-      router.replace('/home');
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       Alert.alert('Login failed', error.message || 'An error occurred.');
       console.error('Login error:', error);
@@ -134,15 +117,11 @@ export default function Login() {
     Alert.alert('Forgot Password', 'This feature is not yet implemented.');
   };
 
-  // ✅ ΤΟ ΚΛΕΙΔΙ: Fingerprint φαίνεται ΜΟΝΟ αν:
-  // - είναι Android
-  // - υπάρχει hardware fingerprint
-  // - έχει γίνει πρώτα login με password
   const showFingerprint =
     Platform.OS === 'android' && biometricAvailable && hasCompletedPasswordLogin;
 
   return (
-    <SafeAreaView style={g.screen}>
+    <View style={g.screen}>
       <KeyboardAvoidingView
         style={{ width: '100%', alignItems: 'center' }}
         behavior={Platform.select({ ios: 'padding', android: undefined })}
@@ -236,19 +215,15 @@ export default function Login() {
           </View>
 
           <Pressable style={styles.forgotPasswordButton} onPress={onForgot}>
-            <Text style={styles.forgotPasswordText}>
-              I forgot my password
-            </Text>
+            <Text style={styles.forgotPasswordText}>I forgot my password</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>
 
-      {/* 🔐 Fingerprint: ΜΟΝΟ Android + ΜΟΝΟ μετά από login με κωδικό */}
       {showFingerprint && (
-        <>
+        <View style={styles.fingerprintContainer}>
           <Pressable
             onPress={async () => {
-              // Extra safety: ξανατσεκάρουμε το flag
               const passwordFlag = await AsyncStorage.getItem(
                 PASSWORD_LOGIN_FLAG_KEY
               );
@@ -267,7 +242,7 @@ export default function Login() {
               if (result.success) {
                 const storedToken = await getToken();
                 if (storedToken) {
-                  router.replace('/home');
+                  router.replace('/(tabs)/home');
                 } else {
                   Alert.alert(
                     'No saved session',
@@ -302,9 +277,9 @@ export default function Login() {
             />
           </Pressable>
           <Text style={styles.fingerprintLabel}>Login with fingerprint</Text>
-        </>
+        </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -378,9 +353,10 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   fingerprintContainer: {
+    position: 'absolute',
+    bottom: 40, 
+    alignSelf: 'center',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: theme.spacing.xl,
   },
   fingerprintButton: {
     width: 90,

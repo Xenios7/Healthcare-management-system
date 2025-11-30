@@ -1,9 +1,5 @@
-import { Platform } from "react-native";
-
-const API_BASE_URL = Platform.select({
-    web: 'http://localhost:5164',
-    default: 'http://192.168.27.134:5164',
-});
+//reuser the API base URL from medicationsApi.ts
+import { API_BASE_URL } from "../(tabs)/Api_Base_Url";
 
 export type AppointmentFilter = 'upcoming' | 'completed' | 'all';
 

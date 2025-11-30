@@ -1,9 +1,11 @@
-// app/(auth)/_layout.tsx
-import { Stack } from 'expo-router';
-import React from 'react';
+import React from "react";
+import { Slot } from "expo-router";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
-export default function AuthLayout() {
+export default function RootLayout() {
   return (
-    <Stack screenOptions={{ headerShown: false }} />
+    <SafeAreaProvider>
+      <Slot />
+    </SafeAreaProvider>
   );
 }

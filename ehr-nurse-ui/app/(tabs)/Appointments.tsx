@@ -18,8 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import Icon from 'react-native-vector-icons/Feather';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Link } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   getAppointments,
@@ -29,7 +28,6 @@ import {
   AppointmentPatientDto,
   AppointmentFilter,
 } from '../utils/appointmentsApi';
-import { theme } from '../../styles/theme';
 
 const FILTERS: AppointmentFilter[] = ['all', 'upcoming', 'completed'];
 
@@ -168,7 +166,9 @@ export default function AppointmentsScreen() {
         setAppointments(data.filter(isUpcomingLike));
       } else if (filter === 'completed') {
         setAppointments(
-          data.filter(a => isSameOrAfterToday(new Date(a.startDate))),
+          data.filter(a =>
+            (a.statusDisplay || '').toLowerCase().includes('completed'),
+          ),
         );
       } else {
         setAppointments(data);
@@ -368,14 +368,18 @@ export default function AppointmentsScreen() {
 
   let appointmentsByDate: AppointmentPatientDto[] = [];
 
-  if (filter === 'all') {
-    appointmentsByDate = selectedDate
+  if (!selectedDate) {
+    appointmentsByDate = [];
+  } else if (filter === 'all' || filter === 'completed') {
+    appointmentsByDate = appointments.filter(a =>
+      isSameDay(new Date(a.startDate), selectedDate),
+    );
+  } else if (filter === 'upcoming') {
+    appointmentsByDate = isSameOrAfterToday(selectedDate)
       ? appointments.filter(a =>
           isSameDay(new Date(a.startDate), selectedDate),
         )
       : [];
-  } else if (selectedDate && isSameOrAfterToday(selectedDate)) {
-    appointmentsByDate = appointments;
   } else {
     appointmentsByDate = [];
   }
@@ -394,131 +398,95 @@ export default function AppointmentsScreen() {
   ).toLowerCase()} appointments`;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Your Appointments</Text>
-          <Text style={styles.headerSubtitle}>
-            Last synced: {new Date().toLocaleDateString()}{' '}
-            {new Date().toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </Text>
+    <SafeAreaView
+      style={styles.safeContainer}
+      edges={['top', 'left', 'right']}
+    >
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerTitle}>Your Appointments</Text>
+            <Text style={styles.headerSubtitle}>
+              Last synced: {new Date().toLocaleDateString()}{' '}
+              {new Date().toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </Text>
+          </View>
+
+          <View style={styles.headerIcons}>
+            <TouchableOpacity
+              style={styles.headerIcon}
+              onPress={handleSearchPress}
+            >
+              <Icon name="search" size={18} color="#111827" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.headerIcons}>
-          <TouchableOpacity
-            style={styles.headerIcon}
-            onPress={handleSearchPress}
-          >
-            <Icon name="search" size={18} color="#111827" />
-          </TouchableOpacity>
-        </View>
-      </View>
+        {renderFilterButtons()}
 
-      {renderFilterButtons()}
-
-      {isSearching && (
-        <View style={styles.searchRow}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder={placeholderText}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          <TouchableOpacity style={styles.searchCancel} onPress={cancelSearch}>
-            <Text style={styles.searchCancelText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {renderDayStrip()}
-
-      {loading && !refreshing ? (
-        <View style={styles.center}>
-          <ActivityIndicator />
-        </View>
-      ) : (
-        <FlatList
-          data={visibleAppointments}
-          keyExtractor={item => item.id.toString()}
-          renderItem={renderItem}
-          contentContainerStyle={
-            visibleAppointments.length === 0
-              ? styles.emptyContainer
-              : styles.listContent
-          }
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          ListEmptyComponent={
-            !loading ? (
-              <Text style={styles.emptyText}>No appointments found.</Text>
-            ) : null
-          }
-        />
-      )}
-
-      {error && (
-        <View style={styles.errorBar}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      <View style={styles.bottomNav}>
-        <Link href="/home" asChild>
-          <TouchableOpacity style={styles.bottomItem}>
-            <Ionicons
-              name="home"
-              size={26}
-              color={theme.colors.mutedText}
+        {isSearching && (
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder={placeholderText}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
             />
-          </TouchableOpacity>
-        </Link>
+            <TouchableOpacity style={styles.searchCancel} onPress={cancelSearch}>
+              <Text style={styles.searchCancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
-        <TouchableOpacity style={styles.bottomItem}>
-          <MaterialCommunityIcons
-            name="clipboard-text-outline"
-            size={26}
-            color={theme.colors.mutedText}
-          />
-        </TouchableOpacity>
+        {renderDayStrip()}
 
-        <TouchableOpacity style={styles.bottomItem}>
-          <MaterialCommunityIcons
-            name="pill"
-            size={26}
-            color={theme.colors.mutedText}
+        {loading && !refreshing ? (
+          <View style={styles.center}>
+            <ActivityIndicator />
+          </View>
+        ) : (
+          <FlatList
+            data={visibleAppointments}
+            keyExtractor={item => item.id.toString()}
+            renderItem={renderItem}
+            contentContainerStyle={
+              visibleAppointments.length === 0
+                ? styles.emptyContainer
+                : styles.listContent
+            }
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            ListEmptyComponent={
+              !loading ? (
+                <Text style={styles.emptyText}>No appointments found.</Text>
+              ) : null
+            }
           />
-        </TouchableOpacity>
+        )}
 
-        <TouchableOpacity style={styles.bottomItem}>
-          <MaterialCommunityIcons
-            name="silverware-fork-knife"
-            size={26}
-            color={theme.colors.mutedText}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.bottomItem}>
-          <Ionicons
-            name="calendar-outline"
-            size={26}
-            color={theme.colors.primary}
-          />
-        </TouchableOpacity>
+        {error && (
+          <View style={styles.errorBar}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#F4F6F8',
+  },
   container: {
     flex: 1,
-    paddingTop: 24,
+    paddingTop: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#F4F6F8',
   },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -738,20 +706,5 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     fontSize: 12,
-  },
-
-  bottomNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: 8,
-    paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.card,
-  },
-  bottomItem: {
-    flex: 1,
-    alignItems: 'center',
   },
 });
