@@ -52,6 +52,7 @@ export default function Login() {
     }).start();
   };
 
+
   useEffect(() => {
     (async () => {
       if (Platform.OS !== 'android') return;
