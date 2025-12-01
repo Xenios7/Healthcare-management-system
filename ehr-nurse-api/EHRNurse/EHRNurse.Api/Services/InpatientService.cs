@@ -62,13 +62,12 @@ namespace EHRNurse.Api.Services
         }
 
         // =========================================================
-        // PHASE 2: Medication Per Patient (UTC FIX APPLIED)
+        // PHASE 2: Medication Per Patient 
         // =========================================================
         public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId, DateOnly date, string status)
         {
             var filterStatus = status.ToLower().Trim();
             
-            // --- FIX IS HERE: Force DateTimeKind.Utc ---
             var targetDate = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
 
             var query = _context.MedicationData
@@ -129,19 +128,17 @@ namespace EHRNurse.Api.Services
         }
 
         // =========================================================
-        // PHASE 3: Nutrition Per Patient (UTC FIX APPLIED)
+        // PHASE 3: Nutrition Per Patient
         // =========================================================
         public async Task<IEnumerable<NutritionListItemDto>> GetNutritionForPatientAsync(int patientId, DateOnly date, string status)
         {
             var filterStatus = status.ToLower().Trim();
             
-            // --- FIX IS HERE: Force DateTimeKind.Utc ---
             var targetDate = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
 
             var query = _context.FoodData
                 .AsNoTracking()
                 .Where(f => f.PatientId == patientId)
-                // Filter: Date match
                 .Where(f => f.OnSetDateTime.Date == targetDate.Date)
                 .Include(f => f.Patient)
                     .ThenInclude(p => p.EpisodeCares)

@@ -22,7 +22,6 @@ namespace EHRNurse.Api.Controllers
             return Ok(patients);
         }
 
-        // UPDATED: Added [FromQuery] to read the date from the URL
         [HttpGet("{id}/medication")]
         public async Task<ActionResult<IEnumerable<MedicationListItemDto>>> GetPatientMedications(
             int id, 
