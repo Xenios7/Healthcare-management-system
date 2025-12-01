@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using EHRNurse.Api.Dto;
 using EHRNurse.Api.Interfaces;
 using EHRNurse.Data.Models;
@@ -6,153 +7,187 @@ namespace EHRNurse.Api.Services
 {
     public class InpatientService : IInpatientService
     {
+        private readonly AppDbContext _context;
+
+        public InpatientService(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        // =========================================================
+        // PHASE 1: Main Inpatient List
+        // =========================================================
         public async Task<IEnumerable<InpatientListItemDto>> GetAllInpatientsAsync()
         {
-            var patientsFromDb = new List<Patient>
+            var patientsQuery = _context.Patients
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .Include(p => p.EpisodeCares)
+                    .ThenInclude(e => e.AccommodationData)
+                        .ThenInclude(a => a.Bed)
+                            .ThenInclude(b => b.Room)
+                                .ThenInclude(r => r.Ward)
+                .Include(p => p.ProblemData);
+
+            var patients = await patientsQuery.ToListAsync();
+
+            var dtoList = patients.Select(p =>
             {
-                new Patient
-                {
-                    Id = 101,
-                    FirstName = "John",
-                    LastName = "Smith",
-                    DateOfBirth = new DateOnly(1959, 5, 20), // 66 years old
-                    GenderId = 1,
-                    Email = "john.smith@test.com",
-                    IsActive = true
-                },
-                new Patient
-                {
-                    Id = 102,
-                    FirstName = "Maria",
-                    LastName = "Georgiou",
-                    DateOfBirth = new DateOnly(1951, 8, 15), // 74 years old
-                    GenderId = 2,
-                    Email = "maria.g@test.com",
-                    IsActive = true
-                },
-                 new Patient
-                {
-                    Id = 103,
-                    FirstName = "Test",
-                    LastName = "Patient2",
-                    DateOfBirth = new DateOnly(1959, 1, 1),
-                    GenderId = 1,
-                    Email = "test@test.com",
-                    IsActive = true
-                }
-            };
+                var activeAccommodation = p.EpisodeCares
+                    .SelectMany(e => e.AccommodationData)
+                    .FirstOrDefault(a => a.IsActive);
 
-            // 2. MAP LOGIC
-            var dtoList = patientsFromDb.Select(p => new InpatientListItemDto
-            {
-                PatientId = p.Id,
-                FirstName = p.FirstName,
-                LastName = p.LastName,
-                Age = CalculateAge(p.DateOfBirth),
-                
-                // MAPPING LOGIC FOR WARD (Mocked for now)
-                WardId = p.Id == 101 ? "JWARD1101" : (p.Id == 102 ? "MWARD-2210" : "TWARD-1"),
+                var wardName = activeAccommodation?.Bed?.Room?.Ward?.Name 
+                               ?? activeAccommodation?.Bed?.Room?.WardId.ToString() 
+                               ?? "Unassigned";
 
-                // MAPPING LOGIC FOR DIAGNOSIS (Mocked for now)
-                Diagnosis = p.Id == 101 ? "Stable" : (p.Id == 102 ? "Observation" : "Recovery"),
+                var activeDiagnosis = p.ProblemData
+                    .FirstOrDefault(pd => pd.IsActive)?.Description 
+                    ?? "No Diagnosis";
 
-                // LOGIC FOR ALERTS
-                HasPendingMeds = p.Id == 101, 
-                HasPendingMeals = false
+                return new InpatientListItemDto
+                {
+                    PatientId = p.Id,
+                    FirstName = p.FirstName,
+                    LastName = p.LastName,
+                    Age = CalculateAge(p.DateOfBirth),
+                    WardId = wardName,
+                    Diagnosis = activeDiagnosis,
+                    HasPendingMeds = false, 
+                    HasPendingMeals = false
+                };
             }).ToList();
 
-            return await Task.FromResult(dtoList);
+            return dtoList;
         }
 
         // =========================================================
-        // PHASE 2: Medication Per Patient (For Rafalia - Thursday)
-        // UPDATED: Now accepts 'DateOnly date' for the UI Filter
+        // PHASE 2: Medication Per Patient (UTC FIX APPLIED)
         // =========================================================
-// UPDATED: Now accepts 'status'
         public async Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId, DateOnly date, string status)
         {
-            var mockMeds = new List<MedicationListItemDto>();
-            var today = DateOnly.FromDateTime(DateTime.Now);
+            var filterStatus = status.ToLower().Trim();
             
-            // Normalize status to lowercase for easier comparison
-            var filterStatus = status.ToLower().Trim(); 
+            // --- FIX IS HERE: Force DateTimeKind.Utc ---
+            var targetDate = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
 
-            // --- Context for Mock Data ---
-            string patientName = patientId == 101 ? "John Smith" : (patientId == 102 ? "Maria Georgiou" : "Test Patient2");
-            int patientAge = patientId == 101 ? 66 : 74;
-            string patientWard = patientId == 101 ? "JWARD1101" : "MWARD-2210";
+            var query = _context.MedicationData
+                .AsNoTracking()
+                .Where(m => m.PatientId == patientId)
+                // Filter by Date
+                .Where(m => m.OnSetDateTime < targetDate.AddDays(1) && 
+                           (m.EndDateTime == null || m.EndDateTime >= targetDate))
+                .Include(m => m.Product)
+                .Include(m => m.QuantityUnit)
+                .Include(m => m.FrequencyOfIntakeUnit)
+                .Include(m => m.Patient)
+                    .ThenInclude(p => p.EpisodeCares)
+                        .ThenInclude(e => e.AccommodationData)
+                            .ThenInclude(a => a.Bed)
+                                .ThenInclude(b => b.Room)
+                                    .ThenInclude(r => r.Ward);
 
-            if (patientId == 101) // John Smith//
+            var dbMeds = await query.ToListAsync();
+
+            var dtoList = dbMeds.Select(m =>
             {
-                if (date == today) 
+                string currentStatus = m.IsSubmitted ? "Given" : "Not Given";
+
+                var activeAcc = m.Patient.EpisodeCares
+                    .SelectMany(e => e.AccommodationData)
+                    .FirstOrDefault(a => a.IsActive);
+                
+                string ward = activeAcc?.Bed?.Room?.Ward?.Name ?? "Unassigned";
+                string bed = activeAcc?.Bed?.Name ?? "N/A";
+
+                return new MedicationListItemDto
                 {
-                    // Item 1: Paracetamol (Status = Given)
-                    // We add it ONLY if filter is "all" OR "given"
-                    if (filterStatus == "all" || filterStatus == "given")
-                    {
-                        mockMeds.Add(new MedicationListItemDto
-                        {
-                            MedicationId = 501,
-                            PatientId = 101,
-                            PatientName = patientName, PatientAge = patientAge, Ward = patientWard,
-                            Bed = "BED-A", DaysInWard = 15, Form = "Tablet", FrequencyAmount = 1, FrequencyUnit = "DAY",
-                            
-                            ProductName = "Paracetamol",
-                            Quantity = 500, QuantityUnit = "mg",
-                            InstructionPatient = "Take after meals",
-                            Status = "Given", // This matches the filter
-                            HasReminder = false
-                        });
-                    }
+                    MedicationId = m.Id,
+                    PatientId = m.PatientId,
+                    PatientName = $"{m.Patient.FirstName} {m.Patient.LastName}",
+                    PatientAge = CalculateAge(m.Patient.DateOfBirth),
+                    Ward = ward,
+                    Bed = bed,
+                    DaysInWard = 0,
 
-                    // Item 2: Ibuprofen (Status = Not Given)
-                    // We add it ONLY if filter is "all" OR "not given"
-                    // (Note: UI might send "not_given" or "not given", check typically matches "not given" text)
-                    if (filterStatus == "all" || filterStatus.Contains("not"))
-                    {
-                        mockMeds.Add(new MedicationListItemDto
-                        {
-                            MedicationId = 502,
-                            PatientId = 101,
-                            PatientName = patientName, PatientAge = patientAge, Ward = patientWard,
-                            Bed = "BED-A", DaysInWard = 15, Form = "Capsule", FrequencyAmount = 2, FrequencyUnit = "DAY",
+                    ProductName = m.Product?.ProductName ?? "Unknown Drug",
+                    Quantity = m.Quantity,
+                    QuantityUnit = m.QuantityUnit?.Description ?? "units",
+                    Form = "N/A", 
+                    InstructionPatient = m.InstructionPatient,
+                    Status = currentStatus,
+                    HasReminder = false
+                };
+            });
 
-                            ProductName = "Ibuprofen",
-                            Quantity = 200, QuantityUnit = "mg",
-                            InstructionPatient = "Every 8 hours",
-                            Status = "Not Given", // This matches the filter
-                            HasReminder = true
-                        });
-                    }
-                }
-            }   
-            else if (patientId == 102) // Maria
-            {
-                // Amoxicillin is "Not Given"
-                if (filterStatus == "all" || filterStatus.Contains("not"))
-                {
-                    mockMeds.Add(new MedicationListItemDto
-                    {
-                        MedicationId = 601,
-                        PatientId = 102,
-                        PatientName = "Maria Georgiou", PatientAge = 74, Ward = "MWARD-2210",
-                        Bed = "BED-B", DaysInWard = 150, Form = "Liquid", FrequencyAmount = 1, FrequencyUnit = "DAY",
+            if (filterStatus == "given")
+                dtoList = dtoList.Where(x => x.Status == "Given");
+            else if (filterStatus.Contains("not"))
+                dtoList = dtoList.Where(x => x.Status == "Not Given");
 
-                        ProductName = "Amoxicillin",
-                        Quantity = 1000, QuantityUnit = "mg",
-                        InstructionPatient = "Morning only",
-                        Status = "Not Given",
-                        HasReminder = false
-                    });
-                }
-            }
-
-            return await Task.FromResult(mockMeds);
+            return dtoList;
         }
 
         // =========================================================
-        // HELPER
+        // PHASE 3: Nutrition Per Patient (UTC FIX APPLIED)
         // =========================================================
+        public async Task<IEnumerable<NutritionListItemDto>> GetNutritionForPatientAsync(int patientId, DateOnly date, string status)
+        {
+            var filterStatus = status.ToLower().Trim();
+            
+            // --- FIX IS HERE: Force DateTimeKind.Utc ---
+            var targetDate = DateTime.SpecifyKind(date.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+
+            var query = _context.FoodData
+                .AsNoTracking()
+                .Where(f => f.PatientId == patientId)
+                // Filter: Date match
+                .Where(f => f.OnSetDateTime.Date == targetDate.Date)
+                .Include(f => f.Patient)
+                    .ThenInclude(p => p.EpisodeCares)
+                        .ThenInclude(e => e.AccommodationData)
+                            .ThenInclude(a => a.Bed)
+                                .ThenInclude(b => b.Room)
+                                    .ThenInclude(r => r.Ward);
+
+            var dbFood = await query.ToListAsync();
+
+            var dtoList = dbFood.Select(f =>
+            {
+                string currentStatus = f.IsSubmitted ? "Given" : "Not Given";
+                
+                var activeAcc = f.Patient.EpisodeCares
+                    .SelectMany(e => e.AccommodationData)
+                    .FirstOrDefault(a => a.IsActive);
+
+                return new NutritionListItemDto
+                {
+                    FoodId = f.Id,
+                    PatientId = f.PatientId,
+                    PatientName = $"{f.Patient.FirstName} {f.Patient.LastName}",
+                    PatientAge = CalculateAge(f.Patient.DateOfBirth),
+                    Ward = activeAcc?.Bed?.Room?.Ward?.Name ?? "Unassigned",
+                    Bed = activeAcc?.Bed?.Name ?? "N/A",
+                    DaysInWard = 0,
+
+                    MealType = f.Description ?? "Meal",
+                    MealName = f.Description ?? "Standard Meal",
+                    Instructions = f.Description,
+                    PortionSize = f.PortionSize,
+                    PortionEatenPercentage = f.PortionEatenPercentage,
+                    Status = currentStatus,
+                    HasReminder = false
+                };
+            });
+
+            if (filterStatus == "given")
+                dtoList = dtoList.Where(x => x.Status == "Given");
+            else if (filterStatus.Contains("not"))
+                dtoList = dtoList.Where(x => x.Status == "Not Given");
+
+            return dtoList;
+        }
+
         private int CalculateAge(DateOnly dob)
         {
             var today = DateOnly.FromDateTime(DateTime.Now);
