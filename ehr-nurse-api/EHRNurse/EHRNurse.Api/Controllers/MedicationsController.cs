@@ -30,7 +30,7 @@ namespace EHRNurse.Api.Controllers
             var end = start.AddDays(1);
             var statusLower = (status ?? "all").Trim().ToLowerInvariant();
 
-            // Base query: medications that are at least somewhat relevant
+            // Base query
             IQueryable<MedicationDatum> query = _db.MedicationData
                 .AsNoTracking()
                 .Include(m => m.Patient)
@@ -135,7 +135,6 @@ namespace EHRNurse.Api.Controllers
                 _ => dtoQuery
             };
 
-            // Simple pagination
             var result = dtoQuery
                 .OrderBy(x => x.PatientName)
                 .ToList();
@@ -160,9 +159,6 @@ namespace EHRNurse.Api.Controllers
             return "not_relevant";
         }
 
-        /// <summary>
-        /// Calculates age in whole years on a specific date.
-        /// </summary>
         private static int? CalculateAge(DateOnly? dob, DateOnly onDate)
         {
             if (dob == null)
