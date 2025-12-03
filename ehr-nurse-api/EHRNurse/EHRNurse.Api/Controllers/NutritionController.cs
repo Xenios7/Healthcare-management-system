@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using EHRNurse.Data;
 using EHRNurse.Data.Models;
+using EHRNurse.Api.Dto;
 
 namespace EHRNurse.Api.Controllers
 {
@@ -78,7 +79,7 @@ namespace EHRNurse.Api.Controllers
                     ?? "";
 
                 // 4) days in ward from patient admission date
-                var admissionDate = f.Patient.DateOfAdmission;   // DateOnly?
+                var admissionDate = f.Patient.DateOfAdmission;   
 
                 int daysInWard = 0;
                 if (admissionDate.HasValue)

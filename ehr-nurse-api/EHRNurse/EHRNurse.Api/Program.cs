@@ -1,13 +1,13 @@
 using System.Text;
 using EHRNurse.Api.Services;
-using EHRNurse.Api.Interfaces; // Ensure IShiftService is visible (might need adjusting based on where you put the Interface)
+using EHRNurse.Api.Interfaces; 
 using EHRNurse.Data.Interfaces;
 using EHRNurse.Data.Models;
 using EHRNurse.Data.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql; // Added this for the Console.WriteLine part
+using Npgsql; 
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,16 +24,16 @@ var jwt = builder.Configuration.GetSection("Jwt").Get<JwtOptions>()!;
 
 // 3. Dependency Injection (Register your Services here!)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Service registrations
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IInpatientService, InpatientService>();
 builder.Services.AddScoped<IBarcodeService, BarcodeService>();
+builder.Services.AddScoped<IShiftService, ShiftService>(); // <--- ADDED THIS LINE
 
-// ---> THIS WAS MISSING! ADD THIS LINE: <---
-builder.Services.AddScoped<IShiftService, ShiftService>(); 
-
-
-// Debug: Check connection string (Optional, safe to keep for dev)
+// Log connection string (without password)
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
-Console.WriteLine($"Using connection: {new NpgsqlConnectionStringBuilder(conn) { Password = "***" }.ConnectionString}");
+Console.WriteLine($"Using connection: {new NpgsqlConnectionStringBuilder(conn) { Password = "" }}");
 
 // 4. Authentication
 builder.Services
@@ -66,6 +66,9 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// Enable legacy timestamp behavior for PostgreSQL
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
 var app = builder.Build();
 
 // 6. Pipeline
@@ -78,7 +81,7 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Fix for Docker/Container binding
+
 app.Urls.Add("http://0.0.0.0:5164");
 
 app.MapControllers();

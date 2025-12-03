@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from "react";
 import {
+  SafeAreaView,
+  ScrollView,
   View,
   Text,
   StyleSheet,
-  ScrollView,
   Pressable,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { theme } from "../styles/theme";
-import { Link, router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
+
+import { theme } from "../../styles/theme";
+
+type OverviewStatus = "warning" | "check" | "none";
 
 export default function HomeScreen() {
   const [userName, setUserName] = useState<string>("User");
-
-  // 1ο κουτάκι: μικρό "Log out"
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
-  // 2ο κουτάκι: confirm μήνυμα
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
@@ -25,11 +25,8 @@ export default function HomeScreen() {
       try {
         const storedName = await AsyncStorage.getItem("user_first_name");
         if (storedName) setUserName(storedName);
-      } catch (e) {
-        console.log("Failed to load user name", e);
-      }
+      } catch (e) {}
     };
-
     loadUserName();
   }, []);
 
@@ -40,10 +37,7 @@ export default function HomeScreen() {
         "auth_token",
         "user_id",
       ]);
-    } catch (e) {
-      console.log("Failed to clear storage on logout", e);
-    }
-
+    } catch (e) {}
     router.replace("/login");
   };
 
@@ -53,23 +47,15 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={styles.screen}
-      edges={["top", "bottom", "left", "right"]}
-    >
-      <View style={styles.panel}>
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={[
-            styles.contentContainer,
-            { paddingBottom: theme.spacing.lg + 60 },
-          ]}
-        >
-          {/* ---------- HEADER ---------- */}
+    <SafeAreaView style={styles.safeContainer}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.inner}>
           <View style={styles.headerRow}>
             <Pressable
               onPress={() => {
-                // toggle πρώτο κουτί
                 setShowConfirm(false);
                 setShowLogoutMenu((prev) => !prev);
               }}
@@ -77,7 +63,7 @@ export default function HomeScreen() {
             >
               <Ionicons
                 name="person-outline"
-                size={34}
+                size={30}
                 color={theme.colors.primaryDark}
               />
             </Pressable>
@@ -87,7 +73,6 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* ---------- 1ο ΚΟΥΤΙ: μικρό "Log out" ---------- */}
           {showLogoutMenu && !showConfirm && (
             <View style={styles.logoutBoxWrapper}>
               <View style={styles.logoutBox}>
@@ -104,7 +89,6 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* ---------- 2ο ΚΟΥΤΙ: μήνυμα + Cancel / Log out ---------- */}
           {showConfirm && (
             <View style={styles.logoutBoxWrapper}>
               <View style={styles.confirmBox}>
@@ -132,11 +116,17 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* ---------- Υπόλοιπο περιεχόμενο ---------- */}
-          <Text style={styles.sectionTitle}>Today's Overview</Text>
+          <Text style={styles.sectionTitle}>Today&apos;s Overview</Text>
 
           <View style={styles.overviewRow}>
-            {overviewItem(0, 15, "Given", "pill", "#e53935", "warning")}
+            {overviewItem(
+              0,
+              15,
+              "Given",
+              "pill",
+              "#e53935",
+              "warning"
+            )}
             {overviewItem(
               3,
               15,
@@ -163,30 +153,27 @@ export default function HomeScreen() {
             )}
           </View>
 
-          <Text
-            style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
-          >
+          <Text style={[styles.sectionTitle, styles.sectionSpacingTop]}>
             Quick Actions
           </Text>
 
           <View style={styles.quickActionsRow}>
-            <Link href="/qrcode" asChild>
-              <Pressable style={styles.quickActionCard}>
-                <View style={styles.quickIconWrapper}>
-                  <Ionicons
-                    name="qr-code-outline"
-                    size={32}
-                    color={theme.colors.primaryDark}
-                  />
-                </View>
-                <Text style={styles.quickActionText}>Scan patient</Text>
-              </Pressable>
-            </Link>
+            <Pressable
+              style={styles.quickActionCard}
+              onPress={() => router.push("/qrcode")}
+            >
+              <View style={styles.quickIconWrapper}>
+                <Ionicons
+                  name="qr-code-outline"
+                  size={26}
+                  color={theme.colors.primaryDark}
+                />
+              </View>
+              <Text style={styles.quickActionText}>Scan patient</Text>
+            </Pressable>
           </View>
 
-          <Text
-            style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
-          >
+          <Text style={[styles.sectionTitle, styles.sectionSpacingTop]}>
             Alerts
           </Text>
 
@@ -212,61 +199,15 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* SHIFT MANAGEMENT */}
-          <Text
-            style={[styles.sectionTitle, { marginTop: theme.spacing.lg }]}
-          >
+          <Text style={[styles.sectionTitle, styles.sectionSpacingTop]}>
             Shift Management
           </Text>
           <ShiftManagementCard />
-        </ScrollView>
-
-        {/* ---------- BOTTOM NAV ---------- */}
-        <View style={styles.bottomNav}>
-          <Pressable style={styles.bottomItem}>
-            <Ionicons
-              name="home"
-              size={26}
-              color={theme.colors.primary}
-            />
-          </Pressable>
-          <Pressable style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="clipboard-text-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </Pressable>
-          <Pressable style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="pill"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </Pressable>
-          <Pressable style={styles.bottomItem}>
-            <MaterialCommunityIcons
-              name="silverware-fork-knife"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </Pressable>
-          <Pressable style={styles.bottomItem}>
-            <Ionicons
-              name="calendar-outline"
-              size={26}
-              color={theme.colors.mutedText}
-            />
-          </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
-
-/* ---------- helper components ---------- */
-
-type OverviewStatus = "warning" | "check" | "none";
 
 function overviewItem(
   current: number,
@@ -280,7 +221,11 @@ function overviewItem(
     <View style={styles.overviewCard}>
       <View style={styles.overviewLeft}>
         <View style={styles.overviewIconCircle}>
-          <MaterialCommunityIcons name={icon} size={20} color="#ffffff" />
+          <MaterialCommunityIcons
+            name={icon}
+            size={18}
+            color="#ffffff"
+          />
         </View>
 
         <View style={styles.overviewTextBlock}>
@@ -318,7 +263,10 @@ function overviewItem(
   );
 }
 
-function alertItem(message: string, type: "warning" | "info" = "warning") {
+function alertItem(
+  message: string,
+  type: "warning" | "info" = "warning"
+) {
   const isWarning = type === "warning";
   const iconName = isWarning ? "alert" : "information-outline";
   const iconColor = isWarning ? "#fbbf24" : theme.colors.primary;
@@ -335,8 +283,6 @@ function alertItem(message: string, type: "warning" | "info" = "warning") {
     </View>
   );
 }
-
-/* ---------- Shift Management Card ---------- */
 
 function ShiftManagementCard() {
   const [isActive, setIsActive] = useState(false);
@@ -384,11 +330,7 @@ function ShiftManagementCard() {
       <View style={styles.shiftCard}>
         <View style={styles.shiftTopRow}>
           <View style={styles.shiftIconCircle}>
-            <Ionicons
-              name="time-outline"
-              size={26}
-              color="#1f6d5c"
-            />
+            <Ionicons name="time-outline" size={24} color="#1f6d5c" />
           </View>
 
           <View style={styles.shiftTextBlock}>
@@ -427,28 +369,27 @@ function ShiftManagementCard() {
   );
 }
 
-/* ---------- styles ---------- */
-
 const styles = StyleSheet.create({
-  screen: {
+  safeContainer: {
     flex: 1,
-    backgroundColor: theme.colors.card,
+    backgroundColor: "#F4F6F8",
   },
-
-  panel: {
-    flex: 1,
-    paddingHorizontal: theme.spacing.lg,
-    backgroundColor: theme.colors.card,
-  },
-
-  content: {
+  scroll: {
     flex: 1,
   },
-  contentContainer: {
+  scrollContent: {
     flexGrow: 1,
+    paddingVertical: 16,
+  },
+  inner: {
+    flex: 1,
+    paddingTop: 8,
+    paddingHorizontal: 16,
+    maxWidth: 600,
+    alignSelf: "center",
+    width: "100%",
   },
 
-  /* HEADER */
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -469,7 +410,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
 
-  /* 1ο μικρό κουτί Logout */
   logoutBoxWrapper: {
     alignSelf: "flex-start",
     marginLeft: 6,
@@ -500,14 +440,13 @@ const styles = StyleSheet.create({
     fontSize: theme.font.sm,
   },
 
-  /* 2ο κουτί confirm */
   confirmBox: {
     backgroundColor: "#ffffff",
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 12,
     minWidth: 200,
-    maxWidth: 240,
+    maxWidth: 260,
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 10,
@@ -561,16 +500,19 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
     color: "rgba(15, 23, 42, 0.85)",
   },
+  sectionSpacingTop: {
+    marginTop: theme.spacing.lg,
+  },
 
   overviewRow: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.xs,
     marginBottom: theme.spacing.md,
   },
   overviewCard: {
-    width: "48%",
+    flexBasis: "48%",
+    minWidth: 150,
     marginBottom: theme.spacing.sm,
     flexDirection: "row",
     alignItems: "center",
@@ -588,7 +530,7 @@ const styles = StyleSheet.create({
     paddingLeft: theme.spacing.sm,
   },
   overviewRight: {
-    width: 28,
+    width: 32,
     alignItems: "center",
     justifyContent: "center",
     marginRight: theme.spacing.sm,
@@ -630,7 +572,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginTop: theme.spacing.xs,
   },
-
   quickActionCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -642,7 +583,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.card,
     alignSelf: "flex-start",
   },
-
   quickIconWrapper: {
     padding: 6,
     borderRadius: 8,
@@ -651,7 +591,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: theme.spacing.sm,
   },
-
   quickActionText: {
     fontSize: theme.font.sm,
     fontWeight: "500",
@@ -672,7 +611,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
 
-  /* SHIFT MANAGEMENT */
   shiftWrapper: {
     marginTop: theme.spacing.sm,
     width: "100%",
@@ -736,19 +674,5 @@ const styles = StyleSheet.create({
     fontSize: theme.font.sm,
     fontWeight: "600",
     color: "#ffffff",
-  },
-
-  bottomNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-    marginTop: theme.spacing.sm,
-    paddingVertical: theme.spacing.sm,
-  },
-  bottomItem: {
-    flex: 1,
-    alignItems: "center",
   },
 });

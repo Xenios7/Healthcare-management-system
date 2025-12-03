@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using EHRNurse.Api.Dto;
 using EHRNurse.Data;
 using EHRNurse.Data.Models;
+using EHRNurse.Api.Interfaces; 
 
 namespace EHRNurse.Api.Services
 {
@@ -21,132 +22,99 @@ namespace EHRNurse.Api.Services
             _logger = logger;
         }
 
-        
-        public async Task<ShiftResponseDto> ClockInAsync(string username)
+        public async Task<ShiftResponseDto> ClockInAsync(Guid userId)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(username))
-                {
-                    _logger.LogWarning("Clock in attempt with empty username");
-                    return null;
-                }
-
-                // Find user by username
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == username);
+                // 1. Find user by ID directly (Reliable lookup)
+                var user = await _context.Users.FindAsync(userId);
 
                 if (user == null)
                 {
-                    _logger.LogWarning($"Clock in attempt with non-existent username: {username}");
+                    _logger.LogWarning($"Clock in failed: User with ID {userId} not found in DB.");
                     return null;
                 }
 
-                // Check if user is already clocked in
+                // 2. Check for active shift
                 var activeShift = await _context.Shifts
                     .Where(s => s.UserId == user.Id && s.ClockOutTime == null)
                     .FirstOrDefaultAsync();
 
                 if (activeShift != null)
                 {
-                    _logger.LogWarning($"User {username} attempted to clock in while already clocked in");
-                    return null; // User is already clocked in
+                    _logger.LogWarning($"User {user.Username} attempted to clock in while already clocked in.");
+                    return MapToDto(activeShift, user); 
                 }
 
-                // Create new shift record
+                // 3. Create new shift
                 var shift = new Shift
                 {
                     UserId = user.Id,
                     ClockInTime = DateTime.UtcNow
+                    // Removed 'IsActive = true' assignment to fix CS0200.
+                    // The system determines 'Active' based on ClockOutTime being null.
                 };
 
                 _context.Shifts.Add(shift);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"User {username} clocked in at {shift.ClockInTime}");
+                _logger.LogInformation($"User {user.Username} clocked in at {shift.ClockInTime}");
 
                 return MapToDto(shift, user);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error during clock in for user {username}: {ex.Message}");
+                _logger.LogError($"Error during clock in for user {userId}: {ex.Message}");
                 throw;
             }
         }
 
-        
-        public async Task<ShiftResponseDto> ClockOutAsync(string username)
+        public async Task<ShiftResponseDto> ClockOutAsync(Guid userId)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(username))
-                {
-                    _logger.LogWarning("Clock out attempt with empty username");
-                    return null;
-                }
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null) return null;
 
-                // Find user by username
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == username);
-
-                if (user == null)
-                {
-                    _logger.LogWarning($"Clock out attempt with non-existent username: {username}");
-                    return null;
-                }
-
-                // Find active shift
                 var activeShift = await _context.Shifts
                     .Where(s => s.UserId == user.Id && s.ClockOutTime == null)
                     .FirstOrDefaultAsync();
 
                 if (activeShift == null)
                 {
-                    _logger.LogWarning($"User {username} attempted to clock out without an active shift");
-                    return null; // No active shift found
+                    _logger.LogWarning($"User {user.Username} attempted to clock out without an active shift.");
+                    return null;
                 }
 
-                // Update shift with clock out time
                 activeShift.ClockOutTime = DateTime.UtcNow;
+                // Removed 'activeShift.IsActive = false' assignment to fix CS0200.
+                
                 _context.Shifts.Update(activeShift);
                 await _context.SaveChangesAsync();
 
-                _logger.LogInformation($"User {username} clocked out at {activeShift.ClockOutTime}");
+                _logger.LogInformation($"User {user.Username} clocked out at {activeShift.ClockOutTime}");
 
                 return MapToDto(activeShift, user);
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error during clock out for user {username}: {ex.Message}");
+                _logger.LogError($"Error during clock out for user {userId}: {ex.Message}");
                 throw;
             }
         }
 
-        
-        public async Task<ShiftStatusDto> GetStatusAsync(string username)
+        public async Task<ShiftStatusDto> GetStatusAsync(Guid userId)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(username))
-                {
-                    _logger.LogWarning("Get status attempt with empty username");
-                    return null;
-                }
-
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == username);
-
-                if (user == null)
-                {
-                    _logger.LogWarning($"Get status attempt with non-existent username: {username}");
-                    return null;
-                }
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null) return null;
 
                 var activeShift = await _context.Shifts
                     .Where(s => s.UserId == user.Id && s.ClockOutTime == null)
                     .FirstOrDefaultAsync();
 
-                var status = new ShiftStatusDto
+                return new ShiftStatusDto
                 {
                     UserId = user.Id,
                     UserName = user.Username,
@@ -155,36 +123,20 @@ namespace EHRNurse.Api.Services
                     CurrentClockInTime = activeShift?.ClockInTime,
                     Status = activeShift != null ? "Σε βάρδια" : "Εκτός βάρδιας"
                 };
-
-                _logger.LogInformation($"Retrieved status for user {username}: {status.Status}");
-                return status;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error getting shift status for user {username}: {ex.Message}");
+                _logger.LogError($"Error getting status for user {userId}: {ex.Message}");
                 throw;
             }
         }
 
-        
-        public async Task<IEnumerable<ShiftResponseDto>> GetHistoryAsync(string username, int pageNumber = 1, int pageSize = 10)
+        public async Task<IEnumerable<ShiftResponseDto>> GetHistoryAsync(Guid userId, int pageNumber = 1, int pageSize = 10)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(username))
-                {
-                    _logger.LogWarning("Get history attempt with empty username");
-                    return null;
-                }
-
-                var user = await _context.Users
-                    .FirstOrDefaultAsync(u => u.Username == username);
-
-                if (user == null)
-                {
-                    _logger.LogWarning($"Get history attempt with non-existent username: {username}");
-                    return null;
-                }
+                var user = await _context.Users.FindAsync(userId);
+                if (user == null) return null;
 
                 var shifts = await _context.Shifts
                     .Where(s => s.UserId == user.Id)
@@ -193,19 +145,15 @@ namespace EHRNurse.Api.Services
                     .Take(pageSize)
                     .ToListAsync();
 
-                var historyDtos = shifts.Select(s => MapToDto(s, user)).ToList();
-
-                _logger.LogInformation($"Retrieved {historyDtos.Count} shift records for user {username}");
-                return historyDtos;
+                return shifts.Select(s => MapToDto(s, user)).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error getting shift history for user {username}: {ex.Message}");
+                _logger.LogError($"Error getting history for user {userId}: {ex.Message}");
                 throw;
             }
         }
 
-        
         private ShiftResponseDto MapToDto(Shift shift, User user)
         {
             return new ShiftResponseDto
@@ -214,7 +162,7 @@ namespace EHRNurse.Api.Services
                 UserId = shift.UserId,
                 ClockInTime = shift.ClockInTime,
                 ClockOutTime = shift.ClockOutTime,
-                IsActive = shift.IsActive,
+                IsActive = shift.ClockOutTime == null, // Calculated property logic
                 UserName = user.Username,
                 UserFullName = $"{user.FirstName} {user.LastName}"
             };

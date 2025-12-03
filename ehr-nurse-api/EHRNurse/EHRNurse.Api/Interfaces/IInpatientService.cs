@@ -1,0 +1,12 @@
+using EHRNurse.Api.Dto;
+
+namespace EHRNurse.Api.Interfaces
+{
+    public interface IInpatientService
+    {
+        Task<IEnumerable<InpatientListItemDto>> GetAllInpatientsAsync();
+        Task<IEnumerable<MedicationListItemDto>> GetMedicationsForPatientAsync(int patientId, DateOnly date, string status);
+        
+        Task<IEnumerable<NutritionListItemDto>> GetNutritionForPatientAsync(int id, DateOnly queryDate, string status);
+    }
+}

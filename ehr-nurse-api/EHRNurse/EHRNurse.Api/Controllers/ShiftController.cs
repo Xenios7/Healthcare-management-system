@@ -1,11 +1,14 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EHRNurse.Api.Dto;
 using EHRNurse.Api.Services;
+using System.Security.Claims;
 
 namespace EHRNurse.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize] // 1. Requires the user to be logged in (send a Token)
     public class ShiftController : ControllerBase
     {
         private readonly IShiftService _shiftService;
@@ -17,19 +20,42 @@ namespace EHRNurse.Api.Controllers
             _logger = logger;
         }
 
-        
-        [HttpPost("clock-in")]
-        public async Task<IActionResult> ClockIn([FromBody] ShiftRequestDto request)
+        // Helper method to get the current user's ID (Guid) from the Token
+        private Guid? GetCurrentUserId()
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.Username))
-                return BadRequest(new { message = "Username is required and cannot be empty." });
+            // 1. Look for standard "NameIdentifier" claim (which holds the ID)
+            var idClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            // 2. Try to parse it as a GUID
+            if (Guid.TryParse(idClaim, out var userId))
+            {
+                return userId;
+            }
+            
+            // 3. Fallback: Try "sub" claim just in case
+            var subClaim = User.FindFirst("sub")?.Value;
+            if (Guid.TryParse(subClaim, out var subId))
+            {
+                return subId;
+            }
+            
+            _logger.LogWarning("Token present but could not extract User ID (NameIdentifier or sub) as Guid.");
+            return null;
+        }
+
+        [HttpPost("clock-in")]
+        public async Task<IActionResult> ClockIn() // No arguments needed from Frontend body
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized(new { message = "Invalid User Token." });
 
             try
             {
-                var result = await _shiftService.ClockInAsync(request.Username);
+                // Pass the Guid userId to the service
+                var result = await _shiftService.ClockInAsync(userId.Value);
 
                 if (result == null)
-                    return BadRequest(new { message = $"Failed to clock in. User '{request.Username}' either doesn't exist or is already clocked in." });
+                    return BadRequest(new { message = "Failed to clock in." });
 
                 return Ok(result);
             }
@@ -40,19 +66,19 @@ namespace EHRNurse.Api.Controllers
             }
         }
 
-        
         [HttpPost("clock-out")]
-        public async Task<IActionResult> ClockOut([FromBody] ShiftRequestDto request)
+        public async Task<IActionResult> ClockOut() // No arguments needed
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.Username))
-                return BadRequest(new { message = "Username is required and cannot be empty." });
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized(new { message = "Invalid User Token." });
 
             try
             {
-                var result = await _shiftService.ClockOutAsync(request.Username);
+                // Pass the Guid userId to the service
+                var result = await _shiftService.ClockOutAsync(userId.Value);
 
                 if (result == null)
-                    return BadRequest(new { message = $"Failed to clock out. User '{request.Username}' either doesn't exist or has no active shift." });
+                    return BadRequest(new { message = "Failed to clock out. User either doesn't exist or has no active shift." });
 
                 return Ok(result);
             }
@@ -63,19 +89,19 @@ namespace EHRNurse.Api.Controllers
             }
         }
 
-        
-        [HttpGet("status/{username}")]
-        public async Task<IActionResult> GetStatus(string username)
+        [HttpGet("status")]
+        public async Task<IActionResult> GetStatus()
         {
-            if (string.IsNullOrWhiteSpace(username))
-                return BadRequest(new { message = "Username is required and cannot be empty." });
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized(new { message = "Invalid User Token." });
 
             try
             {
-                var result = await _shiftService.GetStatusAsync(username);
+                // Pass the Guid userId to the service
+                var result = await _shiftService.GetStatusAsync(userId.Value);
 
                 if (result == null)
-                    return NotFound(new { message = $"No shift status found for user '{username}'." });
+                    return NotFound(new { message = "User record not found." });
 
                 return Ok(result);
             }
@@ -86,12 +112,11 @@ namespace EHRNurse.Api.Controllers
             }
         }
 
-        
-        [HttpGet("history/{username}")]
-        public async Task<IActionResult> GetHistory(string username, int pageNumber = 1, int pageSize = 10)
+        [HttpGet("history")]
+        public async Task<IActionResult> GetHistory(int pageNumber = 1, int pageSize = 10)
         {
-            if (string.IsNullOrWhiteSpace(username))
-                return BadRequest(new { message = "Username is required and cannot be empty." });
+            var userId = GetCurrentUserId();
+            if (userId == null) return Unauthorized(new { message = "Invalid User Token." });
 
             if (pageNumber < 1)
                 return BadRequest(new { message = "Page number must be greater than 0." });
@@ -101,12 +126,11 @@ namespace EHRNurse.Api.Controllers
 
             try
             {
-                var result = await _shiftService.GetHistoryAsync(username, pageNumber, pageSize);
+                // Pass the Guid userId to the service
+                var result = await _shiftService.GetHistoryAsync(userId.Value, pageNumber, pageSize);
 
-                if (result == null || !result.Any())
-                    return NotFound(new { message = $"No shift history found for user '{username}'." });
-
-                return Ok(result);
+                // Return empty list instead of 404 if simply no history exists yet
+                return Ok(result ?? new List<ShiftResponseDto>());
             }
             catch (Exception ex)
             {

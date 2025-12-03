@@ -4,7 +4,7 @@ public class MedicationListItemDto
     public int PatientId { get; set; }
 
     public string PatientName { get; set; } = null!;
-    public int? PatientAge { get; set; }   // ← here
+    public int? PatientAge { get; set; }   
 
     public string Ward { get; set; } = null!;
     public string Bed { get; set; } = null!;
