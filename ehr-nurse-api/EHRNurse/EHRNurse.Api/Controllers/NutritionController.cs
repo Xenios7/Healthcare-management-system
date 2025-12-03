@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using EHRNurse.Data;
 using EHRNurse.Data.Models;
+using EHRNurse.Api.Dto;
 
 namespace EHRNurse.Api.Controllers
 {

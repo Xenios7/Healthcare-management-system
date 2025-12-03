@@ -128,7 +128,7 @@ namespace EHRNurse.Api.Services
         }
 
         // =========================================================
-        // PHASE 3: Nutrition Per Patient
+        // PHASE 3: Nutrition Per Patient (UPDATED)
         // =========================================================
         public async Task<IEnumerable<NutritionListItemDto>> GetNutritionForPatientAsync(int patientId, DateOnly date, string status)
         {
@@ -140,6 +140,7 @@ namespace EHRNurse.Api.Services
                 .AsNoTracking()
                 .Where(f => f.PatientId == patientId)
                 .Where(f => f.OnSetDateTime.Date == targetDate.Date)
+                .Include(f => f.FoodType) // Required to get "BREAKFAST" category
                 .Include(f => f.Patient)
                     .ThenInclude(p => p.EpisodeCares)
                         .ThenInclude(e => e.AccommodationData)
@@ -167,13 +168,20 @@ namespace EHRNurse.Api.Services
                     Bed = activeAcc?.Bed?.Name ?? "N/A",
                     DaysInWard = 0,
 
-                    MealType = f.Description ?? "Meal",
-                    MealName = f.Description ?? "Standard Meal",
-                    Instructions = f.Description,
+                    // FIX: Swap logic so the Description (e.g. Oatmeal) appears as the Title (MealType)
+                    MealType = f.Description ?? "Standard Meal",
+                    
+                    // Put the Category (e.g. BREAKFAST) in the Instructions so it appears in the body
+                    Instructions = f.FoodType?.Display ?? "General",
+                    MealName = f.FoodType?.Display ?? "General",
+                    
                     PortionSize = f.PortionSize,
                     PortionEatenPercentage = f.PortionEatenPercentage,
                     Status = currentStatus,
-                    HasReminder = false
+                    HasReminder = false,
+                    
+                    // Ensure Time is sent
+                    OnSetDateTime = f.OnSetDateTime 
                 };
             });
 

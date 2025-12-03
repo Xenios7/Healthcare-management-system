@@ -26,14 +26,24 @@ namespace EHRNurse.Api.Controllers
         public async Task<ActionResult<IEnumerable<MedicationListItemDto>>> GetPatientMedications(
             int id, 
             [FromQuery] DateOnly? date,
-            [FromQuery] string? status = "all") // Default to "all" if missing
+            [FromQuery] string? status = "all")
         {
             var queryDate = date ?? DateOnly.FromDateTime(DateTime.Now);
-            
-            // Pass the status to the service
             var meds = await _inpatientService.GetMedicationsForPatientAsync(id, queryDate, status ?? "all");
-            
             return Ok(meds);
+        }
+
+        // --- ADDED THIS MISSING ENDPOINT ---
+        [HttpGet("{id}/nutrition")]
+        public async Task<ActionResult<IEnumerable<NutritionListItemDto>>> GetPatientNutrition(
+            int id, 
+            [FromQuery] DateOnly? date,
+            [FromQuery] string? status = "all")
+        {
+            var queryDate = date ?? DateOnly.FromDateTime(DateTime.Now);
+            // This calls the method you just showed me in your service
+            var nutrition = await _inpatientService.GetNutritionForPatientAsync(id, queryDate, status ?? "all");
+            return Ok(nutrition);
         }
     }
 }
