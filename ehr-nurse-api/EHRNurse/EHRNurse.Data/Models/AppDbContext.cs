@@ -434,7 +434,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<TravelHistoryDatum> TravelHistoryData { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
+    public DbSet<Shift> Shifts { get; set; } 
     public virtual DbSet<VaccinationDatum> VaccinationData { get; set; }
 
     public virtual DbSet<ValueSet> ValueSets { get; set; }
