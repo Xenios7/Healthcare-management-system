@@ -8,7 +8,7 @@ namespace EHRNurse.Api.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // 1. Requires the user to be logged in (send a Token)
+    [Authorize] 
     public class ShiftController : ControllerBase
     {
         private readonly IShiftService _shiftService;
@@ -20,7 +20,7 @@ namespace EHRNurse.Api.Controllers
             _logger = logger;
         }
 
-        // Helper method to get the current user's ID (Guid) from the Token
+      
         private Guid? GetCurrentUserId()
         {
             // 1. Look for standard "NameIdentifier" claim (which holds the ID)
