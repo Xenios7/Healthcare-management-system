@@ -42,27 +42,49 @@ export default function PatientsScreen() {
   useEffect(() => {
     const loadPatients = async () => {
       try {
-        const url = `${API_BASE_URL}/api/Patients`;
+        const url = `${API_BASE_URL}/api/Inpatients`;
+        console.log("Fetching patients from:", url);
+        
         const res = await fetch(url);
-        const data = (await res.json()) as PatientCard[];
-        setPatients(data);
+        
+        if (res.ok) {
+            const rawData = await res.json();
+            
+            // FIX: Map Backend format (firstName/lastName) to Frontend format (name)
+            const mappedData: PatientCard[] = rawData.map((item: any) => ({
+                id: item.patientId, 
+                name: `${item.firstName} ${item.lastName}`, // Combine names
+                age: item.age,
+                ward: item.wardId || "Unassigned",
+                bed: item.bed || "N/A", // Handle missing fields safely
+                daysInWard: 0 // Default since API doesn't seem to send this
+            }));
+
+            setPatients(mappedData);
+        } else {
+            console.error("API returned error:", res.status);
+            throw new Error("API failed");
+        }
       } catch (e) {
+        console.error("Using Fallback Data. Error:", e);
+        
+        // Fallback data (Safe format)
         setPatients([
           {
-            id: 1,
+            id: 101, 
+            name: "John Smith (Fixed)",
+            age: 74,
+            ward: "WARD - 2",
+            bed: "210",
+            daysInWard: 23,
+          },
+          {
+            id: 1, 
             name: "Test Patient2",
             age: 66,
             ward: "WARD - 1",
             bed: "101",
             daysInWard: 88,
-          },
-          {
-            id: 2,
-            name: "John Smith",
-            age: 74,
-            ward: "WARD - 2",
-            bed: "210",
-            daysInWard: 23,
           },
           {
             id: 3,
@@ -81,9 +103,11 @@ export default function PatientsScreen() {
 
   const filteredPatients = useMemo(
     () =>
-      patients.filter((p) =>
-        p.name.toLowerCase().includes(search.trim().toLowerCase())
-      ),
+      patients.filter((p) => {
+        // Safe guard against undefined name
+        const pName = p.name || ""; 
+        return pName.toLowerCase().includes(search.trim().toLowerCase());
+      }),
     [patients, search]
   );
 
@@ -163,13 +187,24 @@ export default function PatientsScreen() {
           showsVerticalScrollIndicator={false}
         >
           {filteredPatients.map((p) => (
-            <TouchableOpacity key={p.id} style={styles.card}>
+            <TouchableOpacity key={p.id} style={styles.card} onPress={() =>
+              router.push({
+                pathname: "/inpatients2-1",
+                params: {
+                  patientId: String(p.id),
+                  name: p.name,
+                  age: p.age != null ? String(p.age) : "",
+                  ward: p.ward,
+                  bed: p.bed,
+                  daysInWard: String(p.daysInWard),
+                },
+              })
+            }>
               <View style={styles.avatarCircle}>
                 <Text style={styles.avatarLetter}>
-                  {p.name.charAt(0).toUpperCase()}
+                  {p.name ? p.name.charAt(0).toUpperCase() : "?"}
                 </Text>
               </View>
-
               <View style={styles.infoArea}>
                 <Text style={styles.nameText}>
                   {p.name} ({p.age ?? "?"}yo)
