@@ -98,12 +98,6 @@ export default function TabsLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="inpatients2-1"
-        options={{
-          href: null,
-        }}
-      />
 
       <Tabs.Screen
         name="inpatient2"
