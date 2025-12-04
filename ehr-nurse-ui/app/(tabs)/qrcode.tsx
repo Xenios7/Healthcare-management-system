@@ -10,6 +10,8 @@ import * as Haptics from "expo-haptics";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { API_BASE_URL } from "./Api_Base_Url";
 
+const PATIENT_DETAILS_PATH = "/inpatient2";
+
 export default function QRCodeScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
@@ -19,12 +21,10 @@ export default function QRCodeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      console.log("[QR] Screen focused -> enable scanner");
       setScannerActive(true);
       hasHandledScan.current = false;
 
       return () => {
-        console.log("[QR] Screen unfocused -> reset flags");
         setScannerActive(false);
         hasHandledScan.current = false;
       };
@@ -45,16 +45,8 @@ export default function QRCodeScreen() {
   }
 
   const handleBarCodeScanned = async ({ data }: BarcodeScanningResult) => {
-    console.log("[QR] onBarcodeScanned fired with data:", data);
-
-    if (!scannerActive) {
-      console.log("[QR] Ignored scan because scannerActive = false");
-      return;
-    }
-    if (hasHandledScan.current) {
-      console.log("[QR] Ignored scan because hasHandledScan = true");
-      return;
-    }
+    if (!scannerActive) return;
+    if (hasHandledScan.current) return;
 
     hasHandledScan.current = true;
     setScannerActive(false);
@@ -62,94 +54,94 @@ export default function QRCodeScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     try {
-      console.log("[QR] Calling backend:", `${API_BASE_URL}/api/barcode/scan`);
       const response = await fetch(`${API_BASE_URL}/api/barcode/scan`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ barcodeData: data }),
       });
 
-      console.log("[QR] Response status:", response.status);
       let result: any = {};
       try {
         result = await response.json();
-      } catch (e) {
-        console.log("[QR] Failed to parse JSON:", e);
-      }
-      console.log("[QR] Response body:", result);
+      } catch {}
 
-      if (response.ok && result.success) {
-        if (result.type === "patient" && result.data) {
-          const p = result.data;
-          const name =
-            (p.firstName || p.first_name || "") +
-            " " +
-            (p.lastName || p.last_name || "");
-          const id = p.id ?? p.Id;
+      // ---------- PATIENT QR ----------
+      if (response.ok && result.success && result.type === "patient" && result.data) {
+        const p = result.data;
 
-          Alert.alert("Patient found", `Name: ${name}\nID: ${id}`, [
-            {
-              text: "OK",
-              onPress: () => {
-                router.replace("/home");
-              },
+        const name =
+          (p.firstName || p.first_name || "") +
+          " " +
+          (p.lastName || p.last_name || "");
+
+        const patientId = String(p.id ?? p.Id);
+        const age = p.age ?? p.Age;
+
+        const navParams: any = {
+          patientId,
+          name,
+        };
+        if (age != null) navParams.age = String(age);
+
+        Alert.alert("Patient found", `Name: ${name}\nID: ${patientId}`, [
+          {
+            text: "Open details",
+            onPress: () => {
+              router.replace({
+                pathname: PATIENT_DETAILS_PATH,
+                params: navParams,
+              });
             },
-          ]);
-        } else if (result.type === "medication" && result.data) {
-          const m = result.data;
-          const medName = m.name || m.drugName || "Medication";
-          Alert.alert("Medication found", `Medication: ${medName}`, [
-            {
-              text: "OK",
-              onPress: () => {
-                router.replace("/home");
-              },
+          },
+          {
+            text: "Cancel",
+            onPress: () => {
+              router.replace("/home");   // 🔙 ΠΑΕΙ HOME
             },
-          ]);
-        } else {
-          Alert.alert("Scan result", result.message || "Success", [
-            {
-              text: "OK",
-              onPress: () => {
-                router.replace("/home");
-              },
-            },
-          ]);
-        }
-      } else {
-        Alert.alert(
-          "Scan failed",
-          result.message || "Could not process barcode",
-          [
-            {
-              text: "Try again",
-              onPress: () => {
-                console.log("[QR] User pressed Try again");
-                hasHandledScan.current = false;
-                setScannerActive(true);
-              },
-            },
-            {
-              text: "Back to home",
-              onPress: () => {
-                router.replace("/home");
-              },
-            },
-          ]
-        );
+            style: "cancel",
+          },
+        ]);
+
+        return;
       }
+
+      // ---------- MEDICATION QR ----------
+      if (response.ok && result.success && result.type === "medication") {
+        const m = result.data;
+        const medName = m.name || m.drugName || "Medication";
+        Alert.alert("Medication found", `Medication: ${medName}`, [
+          {
+            text: "OK",
+            onPress: () => {
+              router.replace("/home");
+            },
+          },
+        ]);
+        return;
+      }
+
+      // ---------- WRONG QR ----------
+      Alert.alert("Scan failed", result.message || "Invalid QR code", [
+        {
+          text: "Try again",
+          onPress: () => {
+            hasHandledScan.current = false;
+            setScannerActive(true);
+          },
+        },
+        {
+          text: "Home",
+          onPress: () => router.replace("/home"),
+        },
+      ]);
     } catch (error) {
-      console.error("Error calling barcode API", error);
       Alert.alert(
         "Network error",
-        "Could not contact the server. Make sure the backend is running and the URL is correct.",
+        "Could not contact the server.",
         [
           {
             text: "Try again",
             onPress: () => {
-              console.log("[QR] User pressed Try again after network error");
               hasHandledScan.current = false;
               setScannerActive(true);
             },
@@ -164,10 +156,7 @@ export default function QRCodeScreen() {
       <Pressable
         style={[
           styles.exitButton,
-          {
-            top: insets.top + 12,
-            right: 16,
-          },
+          { top: insets.top + 12, right: 16 },
         ]}
         onPress={() => router.replace("/home")}
       >
