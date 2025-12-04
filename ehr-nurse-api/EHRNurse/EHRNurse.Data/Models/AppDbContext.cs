@@ -16,7 +16,7 @@ public partial class AppDbContext : DbContext
     }
     
     public virtual DbSet<AccommodationBed> AccommodationBeds { get; set; }
-
+    
     public virtual DbSet<AccommodationBuilding> AccommodationBuildings { get; set; }
 
     public virtual DbSet<AccommodationDataHistory> AccommodationDataHistories { get; set; }
@@ -46,7 +46,6 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<AllergyUnknownDatum> AllergyUnknownData { get; set; }
 
     public virtual DbSet<Answer> Answers { get; set; }
-
     public virtual DbSet<AnswerQuestionnaire> AnswerQuestionnaires { get; set; }
 
     public virtual DbSet<AppointmentDatum> AppointmentData { get; set; }
@@ -434,7 +433,7 @@ public partial class AppDbContext : DbContext
     public virtual DbSet<TravelHistoryDatum> TravelHistoryData { get; set; }
 
     public virtual DbSet<User> Users { get; set; }
-
+    public DbSet<Shift> Shifts { get; set; } 
     public virtual DbSet<VaccinationDatum> VaccinationData { get; set; }
 
     public virtual DbSet<ValueSet> ValueSets { get; set; }

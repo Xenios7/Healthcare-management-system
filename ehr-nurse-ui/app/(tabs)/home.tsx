@@ -6,12 +6,26 @@ import {
   Text,
   StyleSheet,
   Pressable,
+  ActivityIndicator, // ADDED: Required for loading state
+  Alert, // ADDED: Required for user feedback
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from 'expo-secure-store'; // ADDED: Required for JWT retrieval
 import { router } from "expo-router";
 
 import { theme } from "../../styles/theme";
+
+// --- API CONSTANTS & TYPES ---
+const API_BASE_URL = 'http://172.22.112.230:5164/api/Shift';
+
+interface ShiftStatusData {
+    isCurrentlyClocked: boolean;
+    currentClockInTime: string | null;
+    status: string; // "Σε βάρδια" or "Εκτός βάρδιας"
+}
+// -----------------------------
+
 
 type OverviewStatus = "warning" | "check" | "none";
 
@@ -34,7 +48,7 @@ export default function HomeScreen() {
     try {
       await AsyncStorage.multiRemove([
         "user_first_name",
-        "auth_token",
+        "auth_token", // Assuming this is where the main token is stored
         "user_id",
       ]);
     } catch (e) {}
@@ -284,38 +298,139 @@ function alertItem(
   );
 }
 
+// -------------------------------------------------------------
+// MODIFIED ShiftManagementCard to include API calls and state
+// -------------------------------------------------------------
 function ShiftManagementCard() {
-  const [isActive, setIsActive] = useState(false);
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [elapsedMs, setElapsedMs] = useState(0);
+  const [shiftStatus, setShiftStatus] = useState<ShiftStatusData | null>(null);
+  const [loading, setLoading] = useState(false);
+  // Timer state for displaying duration, initialized outside of the API status
+  const [elapsedMs, setElapsedMs] = useState(0); 
 
+  // 1. Function to fetch the current shift status
+  const fetchShiftStatus = async () => {
+    // Only set loading on initial fetch if we don't have data, to prevent flickering on updates
+    if (!shiftStatus) setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('auth_token'); // Using AsyncStorage key based on handleLogout
+      if (!token) {
+        setShiftStatus({ isCurrentlyClocked: false, currentClockInTime: null, status: "Εκτός βάρδιας" });
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/status`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data: ShiftStatusData = await response.json();
+        setShiftStatus(data);
+      } else if (response.status === 404) {
+        // Handle case where API returns 404 if no shift is found (as per your controller logic)
+        setShiftStatus({ isCurrentlyClocked: false, currentClockInTime: null, status: "Εκτός βάρδιας" });
+      } else {
+        // Log error status but proceed (e.g., if token is bad, it might return 401)
+        console.error("Shift Status Error:", response.status, response.statusText);
+        setShiftStatus({ isCurrentlyClocked: false, currentClockInTime: null, status: "Εκτός βάρδιας" });
+      }
+    } catch (error) {
+      console.error("Shift Status Fetch Error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 2. Generic handler for Clock In/Out (sends the network request)
+  const handleShiftAction = async (action: 'clock-in' | 'clock-out') => {
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('auth_token');
+      if (!token) {
+        Alert.alert("Error", "You must be logged in.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/${action}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}) // Empty body
+      });
+
+      if (response.ok) {
+        Alert.alert("Success", `Successfully clocked ${action === 'clock-in' ? 'in' : 'out'}.`);
+        
+        // --- OPTIMISTIC UPDATE ---
+        // Instead of waiting for the fetch, we manually toggle the state immediately
+        // This makes the UI feel responsive even if the DB is slow to update
+        if (action === 'clock-in') {
+            setShiftStatus({
+                isCurrentlyClocked: true,
+                currentClockInTime: new Date().toISOString(),
+                status: "Σε βάρδια"
+            });
+        } else {
+            setShiftStatus({
+                isCurrentlyClocked: false,
+                currentClockInTime: null,
+                status: "Εκτός βάρδιας"
+            });
+            setElapsedMs(0);
+        }
+        
+        // Then we fetch the official status from the server to be sure
+        setTimeout(() => fetchShiftStatus(), 500); 
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        Alert.alert("Error", errorData.message || "Action failed. Check API logs.");
+      }
+    } catch (error) {
+      console.error(`Shift ${action} Error:`, error);
+      Alert.alert("Error", `An error occurred during clock ${action}.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  // 3. Effect for initial load and background timer
   useEffect(() => {
+    // Initial fetch of status
+    fetchShiftStatus();
+
     let interval: ReturnType<typeof setInterval> | undefined;
 
-    if (isActive && startTime) {
+    if (shiftStatus?.isCurrentlyClocked && shiftStatus.currentClockInTime) {
+      const timeString = shiftStatus.currentClockInTime.endsWith('Z') 
+        ? shiftStatus.currentClockInTime 
+        : shiftStatus.currentClockInTime + 'Z';
+
+      const startTimeMs = new Date(timeString).getTime();      
+      // Update immediately to avoid 1-second delay
+      setElapsedMs(Date.now() - startTimeMs);
+
       interval = setInterval(() => {
-        setElapsedMs(Date.now() - startTime);
+        // Calculate elapsed time from the server-provided ClockInTime
+        setElapsedMs(Date.now() - startTimeMs); 
       }, 1000);
     } else {
-      setElapsedMs(0);
+      setElapsedMs(0); // Reset timer if not clocked in
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isActive, startTime]);
-
-  const handleClockIn = () => {
-    setIsActive(true);
-    setStartTime(Date.now());
-  };
-
-  const handleClockOut = () => {
-    setIsActive(false);
-    setStartTime(null);
-  };
+  }, [shiftStatus?.isCurrentlyClocked, shiftStatus?.currentClockInTime]); // Dependencies trigger on status change
 
   const formatDuration = (ms: number) => {
+    if (ms < 0) ms = 0; // Prevent negative numbers if time sync is slightly off
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -324,6 +439,25 @@ function ShiftManagementCard() {
     const pad = (n: number) => n.toString().padStart(2, "0");
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   };
+  
+  if (loading && shiftStatus === null) {
+      return (
+        <View style={[styles.shiftCard, { justifyContent: 'center', alignItems: 'center', minHeight: 120 }]}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={{ marginTop: 8, color: theme.colors.mutedText }}>Loading Shift Status...</Text>
+        </View>
+      );
+  }
+
+  // Fallback if status is null (e.g. error loading)
+  const safeStatus = shiftStatus || { isCurrentlyClocked: false, currentClockInTime: null, status: "Εκτός βάρδιας" };
+  const isActive = safeStatus.isCurrentlyClocked;
+  
+  const actionText = isActive ? "Clock Out" : "Clock In";
+  const statusText = isActive 
+    ? `Duration: ${formatDuration(elapsedMs)}`
+    : safeStatus.status || "Begin your shift now";
+
 
   return (
     <View style={styles.shiftWrapper}>
@@ -338,29 +472,35 @@ function ShiftManagementCard() {
               {isActive ? "Active Shift" : "Ready to Start?"}
             </Text>
             <Text style={styles.shiftSubtitleText}>
-              {isActive
-                ? `Duration: ${formatDuration(elapsedMs)}`
-                : "Begin your shift now"}
+              {statusText}
             </Text>
           </View>
         </View>
 
         <Pressable
+          // --- CONNECTED TO API CALL ---
+          onPress={() => handleShiftAction(isActive ? 'clock-out' : 'clock-in')}
+          disabled={loading} // Prevent double clicks
+          // -----------------------------
           style={[
             styles.shiftButton,
             isActive ? styles.shiftButtonOut : styles.shiftButtonIn,
+            loading && { opacity: 0.7 }
           ]}
-          onPress={isActive ? handleClockOut : handleClockIn}
         >
           <View style={styles.shiftButtonContent}>
-            <Ionicons
-              name={isActive ? "log-out-outline" : "log-in-outline"}
-              size={20}
-              color="#ffffff"
-              style={{ marginRight: 8 }}
-            />
+            {loading ? (
+                <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 8 }} />
+            ) : (
+                <Ionicons
+                name={isActive ? "log-out-outline" : "log-in-outline"}
+                size={20}
+                color="#ffffff"
+                style={{ marginRight: 8 }}
+                />
+            )}
             <Text style={styles.shiftButtonText}>
-              {isActive ? "Clock Out" : "Clock In"}
+              {actionText}
             </Text>
           </View>
         </Pressable>
