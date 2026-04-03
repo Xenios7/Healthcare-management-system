@@ -31,6 +31,9 @@ A full-stack healthcare system built as a university team project for a leading 
 <img src="https://github.com/user-attachments/assets/8d3870a5-eb1b-455f-9d02-2b68fc636f57" height="400" />
 <img src="https://github.com/user-attachments/assets/d4c6e6d6-34d0-4eac-a306-13f13d078f31" height="400" />
 
+### API Endpoints — Swagger Documentation (Not all included)
+
+<img alt="Screenshot 2026-04-03 at 2 16 35 PM" src="https://github.com/user-attachments/assets/0e78ea29-9d45-40d2-b61b-6bcba460942b" height=400/>
 
 ## 🛠️ Tech Stack
 | Layer | Technology |
